@@ -7,11 +7,21 @@ from database import SessionLocal, engine
 from fastapi.security import OAuth2PasswordRequestForm
 import auth
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
 import jwt  # Для расшифровки токена
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Teacher Journal API")
+
+# Разрешаем фронтенду делать запросы к нашему API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], # Адреса твоего Vue-сервера
+    allow_credentials=True,
+    allow_methods=["*"], # Разрешаем любые методы (GET, POST, PUT, DELETE)
+    allow_headers=["*"], # Разрешаем любые заголовки (включая Authorization для токена)
+)
 
 # Эта переменная указывает FastAPI, где именно клиент получает токен.
 # Мы назвали наш эндпоинт "/token", поэтому пишем "token".
@@ -451,7 +461,7 @@ def create_lesson(
     if group is None:
         raise HTTPException(status_code=404, detail="Группа не найдена")
 
-    return crud.create_lesson(db=db, lesson=lesson)
+    return crud.create_teacher_lesson(db=db, lesson=lesson, teacher_id=current_teacher.id)
 
 
 @app.get("/grade-records/", response_model=List[schemas.GradeRecord])
@@ -489,7 +499,7 @@ def read_schedule(
         {
             "id": lesson.id,
             "lesson_date": lesson.lesson_date,
-            "topic": lesson.topic,
+            "topic": lesson.lesson_topic,
             "subject": {
                 "id": lesson.subject.id,
                 "name": lesson.subject.name,
