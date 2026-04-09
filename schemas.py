@@ -49,7 +49,7 @@ class LessonBase(BaseModel):
     subject_id: int
     group_id: int
     lesson_date: date
-    topic: Optional[str] = None
+    lesson_topic: Optional[str] = None
 
 
 class LessonCreate(LessonBase):

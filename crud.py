@@ -322,8 +322,9 @@ def generate_lessons_from_templates(
                     lesson = models.Lesson(
                         subject_id=template.teaching_assignment.subject_id,
                         group_id=template.teaching_assignment.group_id,
+                        teacher_id=template.teaching_assignment.teacher_id,
                         lesson_date=current_date,
-                        topic=None,
+                        lesson_topic=None,
                     )
                     db.add(lesson)
                     db.flush()
@@ -520,12 +521,14 @@ def get_lesson_by_id(db: Session, lesson_id: int):
     return db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
 
 
-def create_lesson(db: Session, lesson: schemas.LessonCreate):
+# Измени заголовок функции, добавив teacher_id: int
+def create_teacher_lesson(db: Session, lesson: schemas.LessonCreate, teacher_id: int):
     db_lesson = models.Lesson(
+        teacher_id=teacher_id,  # Используем ID, пришедший из аргумента
         subject_id=lesson.subject_id,
         group_id=lesson.group_id,
         lesson_date=lesson.lesson_date,
-        topic=lesson.topic,
+        lesson_topic=lesson.lesson_topic,
     )
     db.add(db_lesson)
     db.commit()
@@ -734,7 +737,7 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
             {
                 "lesson_id": lesson.id,
                 "lesson_date": lesson.lesson_date,
-                "topic": lesson.topic,
+                "topic": lesson.lesson_topic,
                 "subject": {
                     "id": lesson.subject.id,
                     "name": lesson.subject.name,

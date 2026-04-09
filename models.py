@@ -12,6 +12,7 @@ class Teacher(Base):
     full_name = Column(String(150), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    lessons = relationship("Lesson", back_populates="teacher")
     subjects = relationship("Subject", back_populates="teacher")
     teaching_assignments = relationship("TeachingAssignment", back_populates="teacher")
 
@@ -63,12 +64,14 @@ class Lesson(Base):
     __tablename__ = "lessons"
 
     id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
     group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False)
     lesson_date = Column(Date, nullable=False)
-    topic = Column(String(255), nullable=True)
+    lesson_topic = Column(String(255), nullable=True)
 
     subject = relationship("Subject", back_populates="lessons")
+    teacher = relationship("Teacher", back_populates="lessons")
     group = relationship("StudentGroup", back_populates="lessons")
     grade_records = relationship("GradeRecord", back_populates="lesson")
     schedule_occurrences = relationship("ScheduleOccurrence", back_populates="lesson")
