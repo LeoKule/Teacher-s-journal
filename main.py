@@ -200,6 +200,12 @@ def validate_lesson_generation_request(
 def read_groups(db: Session = Depends(get_db)):
     return crud.get_groups(db)
 
+# 1. Получить группы по курсу
+@app.get("/groups/by-course/{course}", response_model=List[schemas.Group])
+def get_groups(course: int, db: Session = Depends(get_db)):
+    # Фильтруем группы по колонке course_year из твоей базы
+    return db.query(models.StudentGroup).filter(models.StudentGroup.course_year == course).all()
+
 @app.post("/groups/", response_model=schemas.Group)
 def create_group(
     group: schemas.GroupCreate,
@@ -419,6 +425,23 @@ def read_subjects(
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
     return crud.get_subjects(db=db, teacher_id=current_teacher.id)
+
+# Получить предметы преподавателя для конкретной группы
+@app.get("/subjects/by-group/{group_id}", response_model=List[schemas.SubjectShort])
+def get_subjects(
+        group_id: int,
+        db: Session = Depends(get_db),
+        current_teacher: models.Teacher = Depends(get_current_teacher)  # Защищаем роут
+):
+    # Используем таблицу TeachingAssignment из схем,
+    # чтобы найти только те предметы, которые этот учитель ведет у этой группы
+    assignments = db.query(models.TeachingAssignment).filter(
+        models.TeachingAssignment.group_id == group_id,
+        models.TeachingAssignment.teacher_id == current_teacher.id
+    ).all()
+
+    # Возвращаем список самих предметов
+    return [assignment.subject for assignment in assignments]
 
 
 @app.post("/subjects/", response_model=schemas.Subject)
