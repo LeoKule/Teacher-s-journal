@@ -4,7 +4,7 @@ import bcrypt  # Используем чистый bcrypt вместо passlib
 
 SECRET_KEY = "super_secret_key_for_my_diploma_project"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365 * 10
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
