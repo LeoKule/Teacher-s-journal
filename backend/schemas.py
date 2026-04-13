@@ -85,21 +85,56 @@ class GradeRecordCreate(BaseModel):
     grade_value: Optional[Union[int, str]] = Field(None, description="Оценка 2-5 или 'Н'")
     comment: Optional[str] = None
 
-    @field_validator('grade_value')
+    @field_validator('grade_value', mode='before')
     def validate_grade(cls, v):
-        if v is None:
+        # Пропускаем если не отправлено, пусто или None
+        if v is None or v == "" or (isinstance(v, str) and v.strip() == ""):
+            return None
+        
+        # Если это число - проверяем диапазон
+        if isinstance(v, int):
+            if v < 2 or v > 5:
+                raise ValueError('Оценка должна быть от 2 до 5')
             return v
-        if isinstance(v, int) and (v < 2 or v > 5):
-            raise ValueError('Оценка должна быть от 2 до 5')
-        if isinstance(v, str) and v.upper() != 'Н':
-            raise ValueError('Допустима только буква "Н" для отметки отсутствия')
-        return v if isinstance(v, int) else v.upper()
+        
+        # Если это строка
+        if isinstance(v, str):
+            # Пытаемся конвертировать в число
+            try:
+                grade_int = int(v.strip())
+                if grade_int < 2 or grade_int > 5:
+                    raise ValueError('Оценка должна быть от 2 до 5')
+                return grade_int
+            except ValueError:
+                # Если не число, проверяем букву "Н"
+                if v.upper() == 'Н':
+                    return 'Н'
+                raise ValueError('Допустима только буква "Н" для отметки отсутствия или оценка 2-5')
+        
+        return v
 
 
 class GradeRecordUpdate(BaseModel):
-    grade_value: Optional[str] = None
+    grade_value: Optional[Union[int, str]] = None
     attendance_status: Optional[str] = None
     comment: Optional[str] = None
+
+    @field_validator('grade_value', mode='before')
+    def validate_grade(cls, v):
+        # Пропускаем если не отправлено, пусто или None
+        if v is None or v == "" or (isinstance(v, str) and v.strip() == ""):
+            return None
+        # Проверяем числовые оценки
+        if isinstance(v, int):
+            if v < 2 or v > 5:
+                raise ValueError('Оценка должна быть от 2 до 5')
+            return v
+        # Проверяем букву "Н"
+        if isinstance(v, str):
+            if v.upper() != 'Н':
+                raise ValueError('Допустима только буква "Н" для отметки отсутствия')
+            return v.upper()
+        return v
 
 
 class GradeRecord(GradeRecordBase):
