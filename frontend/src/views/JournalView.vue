@@ -257,34 +257,38 @@ const toggleTheme = () => {
   theme.global.name.value = isDark ? 'light' : 'dark'
 }
 
-const onCourseChange = async (course) => {
+const onCourseChange = async () => {
   selectedGroup.value = null
   selectedSubject.value = null
   groups.value = []
-  if (!course) return
+  subjects.value = []
+  
+  if (!selectedCourse.value) return
   
   loadingGroups.value = true
   try {
-    const res = await api.get(`/groups/by-course/${course}`)
+    const res = await api.get(`/groups/by-course/${selectedCourse.value}`)
     groups.value = res.data
   } catch (err) {
-    showMsg("Ошибка загрузки групп", "error")
+    handleApiError(err, "Ошибка загрузки групп")
   } finally {
     loadingGroups.value = false
   }
 }
 
-const onGroupChange = async (groupId) => {
+const onGroupChange = async () => {
   selectedSubject.value = null
   subjects.value = []
-  if (!groupId) return
-
+  
+  if (!selectedGroup.value) return
+  
   loadingSubjects.value = true
   try {
-    const res = await api.get(`/subjects/by-group/${groupId}`)
+    // Исправлен путь: добавляем /by-group/
+    const res = await api.get(`/subjects/by-group/${selectedGroup.value}`)
     subjects.value = res.data
   } catch (err) {
-    showMsg("Ошибка загрузки предметов", "error")
+    handleApiError(err, "Ошибка загрузки предметов")
   } finally {
     loadingSubjects.value = false
   }
