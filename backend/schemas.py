@@ -1,7 +1,14 @@
 from datetime import date, time
-from typing import List, Optional
+from typing import List, Optional, Union, Literal
+from pydantic import BaseModel, Field, EmailStr, field_validator
 
-from pydantic import BaseModel, Field
+
+# Строгая схема для создания/обновления пользователя
+class UserCreate(BaseModel):
+    # EmailStr автоматически проверит, что строка имеет формат почты (name@domain.com)
+    email: EmailStr
+    password: str = Field(min_length=8, description="Пароль должен быть не менее 8 символов")
+    full_name: str = Field(min_length=2, max_length=50)
 
 # Схемы для Групп
 class GroupBase(BaseModel):
@@ -70,8 +77,23 @@ class GradeRecordBase(BaseModel):
     comment: Optional[str] = None
 
 
-class GradeRecordCreate(GradeRecordBase):
-    pass
+# Строгая схема для оценки
+class GradeRecordCreate(BaseModel):
+    student_id: int
+    lesson_id: int
+    # Оценка может быть либо числом от 2 до 5, либо строкой "Н" (отсутствие)
+    grade_value: Optional[Union[int, str]] = Field(None, description="Оценка 2-5 или 'Н'")
+    comment: Optional[str] = None
+
+    @field_validator('grade_value')
+    def validate_grade(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, int) and (v < 2 or v > 5):
+            raise ValueError('Оценка должна быть от 2 до 5')
+        if isinstance(v, str) and v.upper() != 'Н':
+            raise ValueError('Допустима только буква "Н" для отметки отсутствия')
+        return v if isinstance(v, int) else v.upper()
 
 
 class GradeRecordUpdate(BaseModel):
