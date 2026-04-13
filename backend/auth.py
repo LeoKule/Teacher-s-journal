@@ -4,11 +4,14 @@ import bcrypt  # Используем чистый bcrypt вместо passlib
 from sqlalchemy.orm import Session
 import models
 from typing import Optional
+from config import get_settings
 
-SECRET_KEY = "super_secret_key_for_my_diploma_project"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+# Загружаем конфигурацию
+settings = get_settings()
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

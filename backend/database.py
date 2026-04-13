@@ -1,11 +1,12 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from config import get_settings
 
-# Строка подключения (убедись, что пароль актуальный)
-DATABASE_URL = "mysql+pymysql://teacher_app:my_secure_password@127.0.0.1:3306/teacher_journal"
+# Загружаем конфигурацию из .env
+settings = get_settings()
 
 # Движок базы данных
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(settings.DATABASE_URL, echo=settings.DEBUG)
 
 # Фабрика сессий. Сессия — это транзакция, через которую мы будем отправлять
 # и получать данные из базы при каждом запросе пользователя.
