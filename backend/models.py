@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -41,6 +41,9 @@ class Student(Base):
 
     # Внешний ключ: ссылается на id из таблицы student_groups
     group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False)
+    
+    # Soft Delete: флаг удаления (не удаляем из БД, просто помечаем как удаленное)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     # Обратная связь для SQLAlchemy: позволяет у объекта студента
     # сразу получить объект его группы (student.group.group_name)
@@ -54,6 +57,9 @@ class Subject(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
+    
+    # Soft Delete: флаг удаления (можно восстановить предмет и его уроки)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     teacher = relationship("Teacher", back_populates="subjects")
     lessons = relationship("Lesson", back_populates="subject")
@@ -69,6 +75,9 @@ class Lesson(Base):
     group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False)
     lesson_date = Column(Date, nullable=False)
     lesson_topic = Column(String(255), nullable=True)
+    
+    # Soft Delete: флаг удаления (уроки можно восстановить вместе с оценками)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     subject = relationship("Subject", back_populates="lessons")
     teacher = relationship("Teacher", back_populates="lessons")
@@ -89,6 +98,9 @@ class GradeRecord(Base):
     grade_value = Column(String(10), nullable=True)
     attendance_status = Column(String(20), nullable=False, default="present")
     comment = Column(String(255), nullable=True)
+    
+    # Soft Delete: флаг удаления (оценку можно восстановить)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     lesson = relationship("Lesson", back_populates="grade_records")
     student = relationship("Student", back_populates="grade_records")

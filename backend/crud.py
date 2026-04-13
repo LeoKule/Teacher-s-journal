@@ -35,14 +35,17 @@ def create_student(db: Session, student: schemas.StudentCreate):
 
 
 def get_students(db: Session, group_id: int | None = None):
-    query = db.query(models.Student)
+    query = db.query(models.Student).filter(models.Student.is_deleted == False)
     if group_id is not None:
         query = query.filter(models.Student.group_id == group_id)
     return query.order_by(models.Student.full_name).all()
 
 
 def get_student_by_id(db: Session, student_id: int):
-    return db.query(models.Student).filter(models.Student.id == student_id).first()
+    return db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.is_deleted == False
+    ).first()
 
 
 def get_teacher_by_email(db: Session, email: str):
@@ -477,14 +480,20 @@ def delete_generated_lessons(
 def get_subjects(db: Session, teacher_id: int):
     return (
         db.query(models.Subject)
-        .filter(models.Subject.teacher_id == teacher_id)
+        .filter(
+            models.Subject.teacher_id == teacher_id,
+            models.Subject.is_deleted == False
+        )
         .order_by(models.Subject.name)
         .all()
     )
 
 
 def get_subject_by_id(db: Session, subject_id: int):
-    return db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    return db.query(models.Subject).filter(
+        models.Subject.id == subject_id,
+        models.Subject.is_deleted == False
+    ).first()
 
 
 def create_subject(db: Session, subject: schemas.SubjectCreate, teacher_id: int):
@@ -508,7 +517,11 @@ def get_lessons(
             joinedload(models.Lesson.group),
         )
         .join(models.Subject, models.Subject.id == models.Lesson.subject_id)
-        .filter(models.Subject.teacher_id == teacher_id)
+        .filter(
+            models.Subject.teacher_id == teacher_id,
+            models.Lesson.is_deleted == False,
+            models.Subject.is_deleted == False
+        )
     )
     if group_id is not None:
         query = query.filter(models.Lesson.group_id == group_id)
@@ -524,7 +537,10 @@ def get_lesson_by_id(db: Session, lesson_id: int):
             joinedload(models.Lesson.subject),
             joinedload(models.Lesson.group),
         )
-        .filter(models.Lesson.id == lesson_id)
+        .filter(
+            models.Lesson.id == lesson_id,
+            models.Lesson.is_deleted == False
+        )
         .first()
     )
 
@@ -558,7 +574,11 @@ def get_grade_records(
         )
         .join(models.Lesson, models.Lesson.id == models.GradeRecord.lesson_id)
         .join(models.Subject, models.Subject.id == models.Lesson.subject_id)
-        .filter(models.Subject.teacher_id == teacher_id)
+        .filter(
+            models.Subject.teacher_id == teacher_id,
+            models.GradeRecord.is_deleted == False,
+            models.Lesson.is_deleted == False
+        )
     )
     if lesson_id is not None:
         query = query.filter(models.GradeRecord.lesson_id == lesson_id)
@@ -573,13 +593,17 @@ def get_grade_record_by_lesson_and_student(db: Session, lesson_id: int, student_
         .filter(
             models.GradeRecord.lesson_id == lesson_id,
             models.GradeRecord.student_id == student_id,
+            models.GradeRecord.is_deleted == False
         )
         .first()
     )
 
 
 def get_grade_record_by_id(db: Session, grade_record_id: int):
-    return db.query(models.GradeRecord).filter(models.GradeRecord.id == grade_record_id).first()
+    return db.query(models.GradeRecord).filter(
+        models.GradeRecord.id == grade_record_id,
+        models.GradeRecord.is_deleted == False
+    ).first()
 
 
 def create_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
@@ -610,7 +634,8 @@ def update_grade_record(
 
 
 def delete_grade_record(db: Session, db_grade_record: models.GradeRecord):
-    db.delete(db_grade_record)
+    # Soft Delete: помечаем как удаленную вместо физического удаления
+    db_grade_record.is_deleted = True
     db.commit()
 
 
@@ -687,7 +712,11 @@ def get_schedule_lessons(
             joinedload(models.Lesson.group),
         )
         .join(models.Subject, models.Subject.id == models.Lesson.subject_id)
-        .filter(models.Subject.teacher_id == teacher_id)
+        .filter(
+            models.Subject.teacher_id == teacher_id,
+            models.Lesson.is_deleted == False,
+            models.Subject.is_deleted == False
+        )
     )
 
     if target_date is not None:
@@ -713,6 +742,8 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
         .filter(
             models.Subject.teacher_id == teacher_id,
             models.Lesson.lesson_date == target_date,
+            models.Lesson.is_deleted == False,
+            models.Subject.is_deleted == False
         )
         .order_by(models.Lesson.id)
         .all()
@@ -724,7 +755,10 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
     #  ОПТИМИЗИРОВАНО: Загружаем всех студентов для этих групп одним запросом
     all_students = (
         db.query(models.Student)
-        .filter(models.Student.group_id.in_(group_ids))
+        .filter(
+            models.Student.group_id.in_(group_ids),
+            models.Student.is_deleted == False
+        )
         .order_by(models.Student.full_name)
         .all()
     )
@@ -743,6 +777,7 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
         
         records_by_student_id = {
             record.student_id: record for record in lesson.grade_records
+            if not record.is_deleted  # Не показываем удаленные оценки
         }
 
         student_rows = []
@@ -781,3 +816,80 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
         "target_date": target_date,
         "lessons": lesson_payload,
     }
+
+
+# ========== SOFT DELETE ФУНКЦИИ ==========
+# Мягкое удаление и восстановление данных
+
+def soft_delete_student(db: Session, student_id: int):
+    """Мягко удаляет студента (помечает как удаленного)"""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if student is None:
+        return None
+    student.is_deleted = True
+    db.commit()
+    return student
+
+
+def restore_student(db: Session, student_id: int):
+    """Восстанавливает удаленного студента"""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if student is None:
+        return None
+    student.is_deleted = False
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def soft_delete_subject(db: Session, subject_id: int):
+    """Мягко удаляет предмет (помечает как удаленный)"""
+    subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if subject is None:
+        return None
+    subject.is_deleted = True
+    db.commit()
+    return subject
+
+
+def restore_subject(db: Session, subject_id: int):
+    """Восстанавливает удаленный предмет"""
+    subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if subject is None:
+        return None
+    subject.is_deleted = False
+    db.commit()
+    db.refresh(subject)
+    return subject
+
+
+def soft_delete_lesson(db: Session, lesson_id: int):
+    """Мягко удаляет урок (помечает как удаленный)"""
+    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
+    if lesson is None:
+        return None
+    lesson.is_deleted = True
+    db.commit()
+    return lesson
+
+
+def restore_lesson(db: Session, lesson_id: int):
+    """Восстанавливает удаленный урок"""
+    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
+    if lesson is None:
+        return None
+    lesson.is_deleted = False
+    db.commit()
+    db.refresh(lesson)
+    return lesson
+
+
+def restore_grade_record(db: Session, grade_record_id: int):
+    """Восстанавливает удаленную оценку"""
+    record = db.query(models.GradeRecord).filter(models.GradeRecord.id == grade_record_id).first()
+    if record is None:
+        return None
+    record.is_deleted = False
+    db.commit()
+    db.refresh(record)
+    return record
