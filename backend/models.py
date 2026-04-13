@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint, Boolean
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint, Boolean, CheckConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -20,6 +20,9 @@ class Teacher(Base):
 #   Модель Учебной группы
 class StudentGroup(Base):
     __tablename__ = "student_groups"
+    __table_args__ = (
+        CheckConstraint("course_year >= 1 AND course_year <= 6", name="ck_student_group_course_year"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     group_name = Column(String(50), unique=True, nullable=False)
@@ -90,6 +93,10 @@ class GradeRecord(Base):
     __tablename__ = "grade_records"
     __table_args__ = (
         UniqueConstraint("lesson_id", "student_id", name="uq_grade_record_lesson_student"),
+        CheckConstraint(
+            "grade_value IS NULL OR grade_value IN ('2', '3', '4', '5', 'Н')",
+            name="ck_grade_record_grade_value"
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -110,6 +117,8 @@ class AcademicPeriod(Base):
     __tablename__ = "academic_periods"
     __table_args__ = (
         UniqueConstraint("academic_year", "semester_number", name="uq_academic_period_year_semester"),
+        CheckConstraint("semester_number >= 1 AND semester_number <= 2", name="ck_academic_period_semester"),
+        CheckConstraint("start_date < end_date", name="ck_academic_period_dates"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -156,6 +165,9 @@ class ScheduleTemplate(Base):
             "lesson_number",
             name="uq_schedule_template_slot",
         ),
+        CheckConstraint("day_of_week >= 1 AND day_of_week <= 7", name="ck_schedule_template_day_of_week"),
+        CheckConstraint("lesson_number >= 1 AND lesson_number <= 8", name="ck_schedule_template_lesson_number"),
+        CheckConstraint("start_time < end_time", name="ck_schedule_template_times"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
