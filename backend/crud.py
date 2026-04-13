@@ -518,7 +518,15 @@ def get_lessons(
 
 
 def get_lesson_by_id(db: Session, lesson_id: int):
-    return db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
+    return (
+        db.query(models.Lesson)
+        .options(
+            joinedload(models.Lesson.subject),
+            joinedload(models.Lesson.group),
+        )
+        .filter(models.Lesson.id == lesson_id)
+        .first()
+    )
 
 
 # Измени заголовок функции, добавив teacher_id: int
@@ -544,6 +552,10 @@ def get_grade_records(
 ):
     query = (
         db.query(models.GradeRecord)
+        .options(
+            joinedload(models.GradeRecord.student),
+            joinedload(models.GradeRecord.lesson).joinedload(models.Lesson.subject),
+        )
         .join(models.Lesson, models.Lesson.id == models.GradeRecord.lesson_id)
         .join(models.Subject, models.Subject.id == models.Lesson.subject_id)
         .filter(models.Subject.teacher_id == teacher_id)
@@ -689,12 +701,13 @@ def get_schedule_lessons(
 
 
 def get_daily_journal(db: Session, teacher_id: int, target_date: date):
+    #  ОПТИМИЗИРОВАНО: Загружаем все уроки с их relations одним запросом
     lessons = (
         db.query(models.Lesson)
         .options(
             joinedload(models.Lesson.subject),
             joinedload(models.Lesson.group),
-            joinedload(models.Lesson.grade_records),
+            joinedload(models.Lesson.grade_records).joinedload(models.GradeRecord.student),
         )
         .join(models.Subject, models.Subject.id == models.Lesson.subject_id)
         .filter(
@@ -705,14 +718,29 @@ def get_daily_journal(db: Session, teacher_id: int, target_date: date):
         .all()
     )
 
+    #  Получаем все уникальные группы из уроков
+    group_ids = list(set(lesson.group_id for lesson in lessons))
+    
+    #  ОПТИМИЗИРОВАНО: Загружаем всех студентов для этих групп одним запросом
+    all_students = (
+        db.query(models.Student)
+        .filter(models.Student.group_id.in_(group_ids))
+        .order_by(models.Student.full_name)
+        .all()
+    )
+    
+    #  Кэшируем студентов по group_id для быстрого поиска (O(1) вместо O(n))
+    students_by_group_id = {}
+    for student in all_students:
+        if student.group_id not in students_by_group_id:
+            students_by_group_id[student.group_id] = []
+        students_by_group_id[student.group_id].append(student)
+
     lesson_payload = []
     for lesson in lessons:
-        students = (
-            db.query(models.Student)
-            .filter(models.Student.group_id == lesson.group_id)
-            .order_by(models.Student.full_name)
-            .all()
-        )
+        #  Берем студентов из кэша вместо отдельного запроса
+        students = students_by_group_id.get(lesson.group_id, [])
+        
         records_by_student_id = {
             record.student_id: record for record in lesson.grade_records
         }
