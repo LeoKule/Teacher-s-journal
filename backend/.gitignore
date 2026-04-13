@@ -36,3 +36,25 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Node modules (frontend dependencies)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Frontend build output
+frontend/dist/
+
+# Text editor backups
+*.swp
+*.swo
+*~
+
+# Secrets and sensitive data
+secrets.py
+config/secrets.py
