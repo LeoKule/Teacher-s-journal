@@ -71,7 +71,18 @@
       </v-row>
     </v-card>
 
-    <v-card elevation="1" class="rounded-lg overflow-hidden" v-if="selectedSubject && !loading">
+    <v-skeleton-loader
+      v-if="loading"
+      class="pa-0 mb-6 rounded-lg border"
+      elevation="1"
+      type="table-thead, table-tbody"
+    ></v-skeleton-loader>
+
+    <v-card 
+      v-else-if="selectedSubject" 
+      elevation="1" 
+      class="rounded-lg overflow-hidden mb-6"
+    >
       <v-table hover class="journal-table">
         <thead>
           <tr class="bg-surface-variant">
