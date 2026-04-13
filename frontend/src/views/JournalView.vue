@@ -127,10 +127,6 @@
       Пожалуйста, выберите курс, группу и предмет для отображения журнала.
     </v-alert>
 
-    <div v-if="loading && selectedSubject" class="text-center mt-10">
-      <v-progress-circular indeterminate color="indigo" size="64"></v-progress-circular>
-    </div>
-
     <v-dialog v-model="dialog" max-width="450px">
       <v-card class="rounded-xl pa-2">
         <v-card-title class="text-h5 text-center pt-4">Оценка и отзыв</v-card-title>
@@ -236,6 +232,23 @@ const snackbar = ref({ show: false, text: '', color: 'success' })
 const showMsg = (text, color = 'success') => {
   snackbar.value = { show: true, text, color }
 }
+
+// ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
+onMounted(() => {
+  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+  if (!token) {
+    router.push('/')
+  }
+})
+
+// ===== ОПТИМИЗАЦИЯ ПОИСКА ОЦЕНОК =====
+const gradesMap = computed(() => {
+  const map = new Map()
+  grades.value.forEach(g => {
+    map.set(`${g.student_id}-${g.lesson_id}`, g)
+  })
+  return map
+})
 
 // Функция переключения
 const toggleTheme = () => {
