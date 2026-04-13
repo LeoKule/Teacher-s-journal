@@ -575,7 +575,6 @@ def create_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
         lesson_id=grade_record.lesson_id,
         student_id=grade_record.student_id,
         grade_value=grade_record.grade_value,
-        attendance_status=grade_record.attendance_status,
         comment=grade_record.comment,
     )
     db.add(db_grade_record)
@@ -614,7 +613,6 @@ def upsert_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
         return create_grade_record(db=db, grade_record=grade_record)
 
     existing_record.grade_value = grade_record.grade_value
-    existing_record.attendance_status = grade_record.attendance_status
     existing_record.comment = grade_record.comment
     db.commit()
     db.refresh(existing_record)
