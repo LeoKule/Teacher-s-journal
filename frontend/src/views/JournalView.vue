@@ -253,7 +253,6 @@ const gradesMap = computed(() => {
 // Функция переключения
 const toggleTheme = () => {
   const isDark = theme.global.current.value.dark
-  // Используем актуальный способ смены
   theme.global.name.value = isDark ? 'light' : 'dark'
 }
 
