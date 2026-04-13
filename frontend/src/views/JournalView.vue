@@ -416,6 +416,37 @@ const exportToExcel = () => {
   XLSX.writeFile(workbook, `Journal_${selectedGroup.value}_${dateStr}.xlsx`)
 }
 
+// Умный обработчик ошибок API
+const handleApiError = (err, defaultMessage = "Произошла ошибка") => {
+  console.error("Детали ошибки:", err);
+
+  if (err.response) {
+    // Если это ошибка валидации данных от FastAPI (422)
+    if (err.response.status === 422) {
+      const details = err.response.data.detail;
+      if (Array.isArray(details)) {
+        // Собираем все ошибки в одну строку
+        const errorMessages = details.map(d => {
+          const field = d.loc[d.loc.length - 1]; // Берем название поля (последний элемент в loc)
+          return `Поле "${field}": ${d.msg}`;
+        }).join('\n');
+        
+        showMsg(`Ошибка заполнения:\n${errorMessages}`, 'error');
+        return;
+      }
+    }
+    
+    // Обработка других ошибок (400, 401, 404), если бэкенд прислал строку в detail
+    if (err.response.data && err.response.data.detail && typeof err.response.data.detail === 'string') {
+      showMsg(err.response.data.detail, 'error');
+      return;
+    }
+  }
+
+  // Если сервер вообще не ответил или ошибка неизвестна
+  showMsg(defaultMessage, 'error');
+}
+
 </script>
 
 <style scoped>
