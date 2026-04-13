@@ -338,22 +338,43 @@ const openEditDialog = (student, lesson) => {
 }
 
 const saveGrade = async () => {
+  // Валидация перед сохранением
+  if (!newGradeValue.value) {
+    showMsg('Пожалуйста, выберите оценку', 'warning')
+    return
+  }
+
   saving.value = true
   try {
     const payload = {
-      student_id: Number(selectedStudent.value.id),
-      lesson_id: Number(selectedLesson.value.id),
-      grade_value: newGradeValue.value ? String(newGradeValue.value) : "", 
-      comment: newComment.value || ""
+      lesson_id: selectedLesson.value.id,
+      student_id: selectedStudent.value.id,
+      grade_value: newGradeValue.value,
+      comment: newComment.value
     }
-
-    await api.put('/grade-records/upsert/', payload)
-    await loadJournal() 
+    
+    // Используем upsert для создания или обновления
+    const response = await api.put('/grade-records/upsert/', payload)
+    const savedRecord = response.data
+    
+    const key = `${selectedStudent.value.id}-${selectedLesson.value.id}`
+    const existingGrade = gradesMap.value.get(key)
+    
+    if (existingGrade) {
+      // Обновляем существующий рекорд
+      const index = grades.value.findIndex(g => g === existingGrade)
+      if (index >= 0) {
+        grades.value[index] = savedRecord
+      }
+    } else {
+      // Добавляем новый рекорд
+      grades.value.push(savedRecord)
+    }
+    
     showMsg("Оценка успешно сохранена")
     dialog.value = false
   } catch (err) {
-    console.error(err)
-    showMsg("Ошибка сохранения", "error")
+    handleApiError(err, "Не удалось сохранить оценку");
   } finally {
     saving.value = false
   }
