@@ -53,7 +53,7 @@
 <script setup>
 import { ref, onMounted} from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../api/axios' // Убедись, что путь до axios.js правильный
+import api from '../api/axios' 
 
 const rememberMe = ref(true)
 const email = ref('')
