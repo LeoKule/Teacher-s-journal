@@ -9,13 +9,13 @@
         </v-btn>
 
         <v-btn 
-        icon 
-        variant="text" 
-        color="success" 
-        @click="exportToExcel" 
-        title="Экспорт в Excel"
-        class="mr-2"
-      >
+          icon 
+          variant="text" 
+          color="success" 
+          @click="exportToExcel" 
+          title="Экспорт в Excel"
+          class="mr-2"
+        >
           <v-icon>mdi-file-excel</v-icon>
         </v-btn>
 
@@ -119,7 +119,7 @@
     </v-card>
 
     <v-alert
-      v-else-if="!selectedSubject && !loading"
+      v-else
       type="info"
       variant="tonal"
       class="mt-5"
@@ -147,7 +147,7 @@
           
           <v-select
             v-model="newGradeValue"
-            :items="[2, 3, 4, 5, 'Н']"
+            :items="GRADE_OPTIONS"
             label="Выберите оценку или 'Н'"
             variant="outlined"
             prepend-inner-icon="mdi-star"
@@ -193,9 +193,19 @@
 <script setup>
 import * as XLSX from 'xlsx'
 import { useTheme } from 'vuetify'
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios'
+
+// ===== КОНСТАНТЫ =====
+const GRADE_OPTIONS = [2, 3, 4, 5, 'Н']
+const GRADE_CONFIG = {
+  'Н': { color: 'grey-darken-3', label: 'Отсутствие' },
+  2: { color: 'red-darken-1', label: 'Неудовлетворительно' },
+  3: { color: 'orange-darken-2', label: 'Удовлетворительно' },
+  4: { color: 'green-darken-1', label: 'Хорошо' },
+  5: { color: 'green-darken-1', label: 'Отлично' }
+}
 
 const router = useRouter()
 
