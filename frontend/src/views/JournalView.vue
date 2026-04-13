@@ -303,33 +303,29 @@ const loadJournal = async () => {
     const [lRes, sRes, gRes] = await Promise.all([
       api.get(`/lessons/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}`),
       api.get(`/students/?group_id=${selectedGroup.value}`),
-      api.get('/grade-records/')
+      api.get(`/grade-records/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}`)
     ])
 
     lessons.value = lRes.data.sort((a, b) => new Date(a.lesson_date) - new Date(b.lesson_date))
     students.value = sRes.data
     grades.value = gRes.data
   } catch (err) {
-    showMsg("Ошибка при загрузке журнала", "error")
+    handleApiError(err, "Не удалось загрузить журнал")
   } finally {
     loading.value = false
   }
 }
 
 const getGradeRecord = (studentId, lessonId) => {
-  return grades.value.find(g => g.student_id === studentId && g.lesson_id === lessonId)
+  return gradesMap.value.get(`${studentId}-${lessonId}`) || null
 }
 
 const getGrade = (studentId, lessonId) => getGradeRecord(studentId, lessonId)?.grade_value || null
 const getComment = (studentId, lessonId) => getGradeRecord(studentId, lessonId)?.comment || null
 
 const getGradeColor = (val) => {
-  if (val === 'Н') return 'grey-darken-3'
   if (!val) return 'blue-lighten-2'
-  const n = Number(val)
-  if (n >= 4) return 'green-darken-1'
-  if (n === 3) return 'orange-darken-2'
-  return 'red-darken-1'
+  return GRADE_CONFIG[val]?.color || 'blue-lighten-2'
 }
 
 const openEditDialog = (student, lesson) => {
