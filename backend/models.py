@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint, Boolean, CheckConstraint
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Time, UniqueConstraint, Boolean, CheckConstraint, DateTime, Text
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
 
 #   Модель Преподавателя
@@ -12,9 +13,16 @@ class Teacher(Base):
     full_name = Column(String(150), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(50), default="teacher", nullable=False)  # "teacher" или "admin"
+    is_active = Column(Boolean, default=True, nullable=False)  # Для блокировки сотрудников
+    last_login = Column(DateTime, nullable=True)  # Последний вход
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
     lessons = relationship("Lesson", back_populates="teacher")
     subjects = relationship("Subject", back_populates="teacher")
     teaching_assignments = relationship("TeachingAssignment", back_populates="teacher")
+    audit_logs = relationship("AuditLog", back_populates="admin", foreign_keys="AuditLog.admin_id")
 
 
 #   Модель Учебной группы
@@ -200,3 +208,22 @@ class ScheduleOccurrence(Base):
 
     schedule_template = relationship("ScheduleTemplate", back_populates="schedule_occurrences")
     lesson = relationship("Lesson", back_populates="schedule_occurrences")
+
+
+# ========== АУДИТ ЛОГИ ==========
+class AuditLog(Base):
+    """Логирование всех действий администратора и изменений данных"""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)  # Кто сделал изменение
+    action = Column(String(100), nullable=False)  # create, update, delete, block_teacher, reset_password
+    entity_type = Column(String(50), nullable=False)  # teacher, subject, group, lesson, grade_record
+    entity_id = Column(Integer, nullable=True)  # ID измененного ресурса
+    old_values = Column(Text, nullable=True)  # JSON с старыми значениями (для update)
+    new_values = Column(Text, nullable=True)  # JSON с новыми значениями
+    description = Column(String(500), nullable=True)  # Человеко-читаемое описание
+    ip_address = Column(String(50), nullable=True)  # IP администратора
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    admin = relationship("Teacher", back_populates="audit_logs", foreign_keys=[admin_id])
