@@ -56,7 +56,14 @@ async def login_for_access_token(
         path="/",
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user_id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "user_role": user.role
+    }
 
 
 @router.post("/refresh")
