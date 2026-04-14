@@ -328,6 +328,90 @@ class Teacher(TeacherBase):
     class Config:
         from_attributes = True
 
+# ========== SCHEMAS ДЛЯ АДМИНИСТРАТОРА ==========
+
+class TeacherCreateByAdmin(BaseModel):
+    """Создание учителя администратором (без пароля в явном виде)"""
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=150)
+    role: str = Field(default="teacher", description="teacher или admin")
+
+
+class TeacherUpdate(BaseModel):
+    """Обновление учителя администратором"""
+    full_name: Optional[str] = Field(None, min_length=2, max_length=150)
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class TeacherResponse(BaseModel):
+    """Информация об учителе для администратора"""
+    id: int
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    last_login: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogResponse(BaseModel):
+    """Запись в логе аудита"""
+    id: int
+    admin_id: Optional[int] = None
+    action: str  # create, update, delete, block_teacher, reset_password
+    entity_type: str  # teacher, subject, group, lesson, grade_record
+    entity_id: Optional[int] = None
+    description: Optional[str] = None
+    old_values: Optional[str] = None
+    new_values: Optional[str] = None
+    ip_address: Optional[str] = None
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class ResetPasswordRequest(BaseModel):
+    """Сброс пароля"""
+    teacher_id: int
+    new_password: str = Field(min_length=8)
+
+
+class BlockTeacherRequest(BaseModel):
+    """Блокировка/разблокировка учителя"""
+    teacher_id: int
+    is_active: bool
+
+
+class SchoolStatistics(BaseModel):
+    """Статистика по всей школе"""
+    total_teachers: int
+    total_students: int
+    total_groups: int
+    total_subjects: int
+    active_teachers: int
+    total_grades_recorded: int
+    average_grade: Optional[float] = None
+
+
+class GroupPromotionRequest(BaseModel):
+    """Запрос на перевод группы на следующий курс"""
+    group_ids: List[int] = Field(..., description="ID групп для перевода")
+
+
+class GroupPromotionResponse(BaseModel):
+    """Результат перевода групп"""
+    promoted_count: int
+    failed_count: int
+    details: List[str] = []
+
+
 # Схема для ответа с токеном
 class Token(BaseModel):
     access_token: str
