@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAuthData, getAccessToken, updateStoredAccessToken } from './authStorage';
 
 const api = axios.create({
     baseURL: 'http://localhost:8000', 
@@ -7,7 +8,7 @@ const api = axios.create({
 
 // Добавляем токен к каждому запросу
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('access_token')
+  const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -19,24 +20,25 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status
 
     // Если ошибка 401 (Не авторизован) и мы еще не пробовали обновить токен
-    if (error.response.status === 401 && !originalRequest._isRetry) {
+    if (status === 401 && originalRequest && !originalRequest._isRetry) {
       originalRequest._isRetry = true;
 
       try {
-        // Пробуем получить новый access_token (кука с refresh отправится автоматически)
+        // Пробуем получить новый access_token (кук с refresh отправится автоматически)
         const response = await axios.post('http://localhost:8000/refresh', {}, { withCredentials: true });
         
         // Сохраняем новый токен
-        localStorage.setItem('access_token', response.data.access_token);
+        updateStoredAccessToken(response.data.access_token);
         
         // Повторяем оригинальный запрос с новым токеном
         originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
         return api(originalRequest);
       } catch (e) {
         // Если refresh тоже протух, выкидываем на страницу логина
-        localStorage.removeItem('access_token');
+        clearAuthData();
         window.location.href = '/';
       }
     }
