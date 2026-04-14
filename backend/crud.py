@@ -939,3 +939,229 @@ def restore_grade_record(db: Session, grade_record_id: int):
     db.commit()
     db.refresh(record)
     return record
+
+
+# ========== АДМИН ФУНКЦИИ ==========
+# Управление пользователями, аудит и статистика
+
+def create_teacher_by_admin(db: Session, teacher_data: schemas.TeacherCreateByAdmin):
+    """Создает преподавателя администратором с временным паролем"""
+    # Проверяем, не существует ли уже такой email
+    existing = db.query(models.Teacher).filter(models.Teacher.email == teacher_data.email).first()
+    if existing:
+        return None
+    
+    # Генерируем временный пароль
+    import secrets
+    temp_password = secrets.token_urlsafe(12)
+    hashed_password = auth.get_password_hash(temp_password)
+    
+    teacher = models.Teacher(
+        full_name=teacher_data.full_name,
+        email=teacher_data.email,
+        password_hash=hashed_password,
+        role=teacher_data.role,
+        is_active=True
+    )
+    db.add(teacher)
+    db.commit()
+    db.refresh(teacher)
+    
+    # Возвращаем учителя и временный пароль
+    return teacher, temp_password
+
+
+def get_all_teachers(db: Session, skip: int = 0, limit: int = 100):
+    """Получить всех преподавателей (для администратора)"""
+    return (
+        db.query(models.Teacher)
+        .order_by(models.Teacher.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def get_teacher_by_id(db: Session, teacher_id: int):
+    """Получить преподавателя по ID"""
+    return db.query(models.Teacher).filter(models.Teacher.id == teacher_id).first()
+
+
+def update_teacher_by_admin(db: Session, teacher_id: int, teacher_data: schemas.TeacherUpdate):
+    """Обновляет преподавателя администратором"""
+    teacher = get_teacher_by_id(db, teacher_id)
+    if not teacher:
+        return None
+    
+    update_data = teacher_data.model_dump(exclude_unset=True)
+    for field_name, value in update_data.items():
+        if field_name == 'email' and value:
+            # Проверяем уникальность email
+            existing = db.query(models.Teacher).filter(
+                models.Teacher.email == value,
+                models.Teacher.id != teacher_id
+            ).first()
+            if existing:
+                return None
+        setattr(teacher, field_name, value)
+    
+    teacher.updated_at = auth.datetime.now(auth.timezone.utc)
+    db.commit()
+    db.refresh(teacher)
+    return teacher
+
+
+def reset_teacher_password(db: Session, teacher_id: int, new_password: str):
+    """Сброс пароля преподавателя администратором"""
+    teacher = get_teacher_by_id(db, teacher_id)
+    if not teacher:
+        return None
+    
+    teacher.password_hash = auth.get_password_hash(new_password)
+    db.commit()
+    db.refresh(teacher)
+    return teacher
+
+
+def block_teacher(db: Session, teacher_id: int, is_active: bool):
+    """Блокирует или разблокирует преподавателя"""
+    teacher = get_teacher_by_id(db, teacher_id)
+    if not teacher:
+        return None
+    
+    teacher.is_active = is_active
+    db.commit()
+    db.refresh(teacher)
+    return teacher
+
+
+def create_audit_log(
+    db: Session,
+    admin_id: int,
+    action: str,
+    entity_type: str,
+    entity_id: int | None = None,
+    description: str | None = None,
+    old_values: str | None = None,
+    new_values: str | None = None,
+    ip_address: str | None = None
+):
+    """Создает запись в логе аудита"""
+    log = models.AuditLog(
+        admin_id=admin_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        description=description,
+        old_values=old_values,
+        new_values=new_values,
+        ip_address=ip_address
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def get_audit_logs(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    entity_type: str | None = None,
+    admin_id: int | None = None,
+    action: str | None = None
+):
+    """Получить логи аудита с фильтрацией"""
+    query = db.query(models.AuditLog)
+    
+    if entity_type:
+        query = query.filter(models.AuditLog.entity_type == entity_type)
+    if admin_id:
+        query = query.filter(models.AuditLog.admin_id == admin_id)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+    
+    return (
+        query
+        .order_by(models.AuditLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def get_school_statistics(db: Session):
+    """Получить статистику по всей школе"""
+    from sqlalchemy import func
+    
+    total_teachers = db.query(func.count(models.Teacher.id)).scalar() or 0
+    total_students = db.query(func.count(models.Student.id)).filter(
+        models.Student.is_deleted == False
+    ).scalar() or 0
+    total_groups = db.query(func.count(models.StudentGroup.id)).scalar() or 0
+    total_subjects = db.query(func.count(models.Subject.id)).filter(
+        models.Subject.is_deleted == False
+    ).scalar() or 0
+    active_teachers = db.query(func.count(models.Teacher.id)).filter(
+        models.Teacher.is_active == True
+    ).scalar() or 0
+    total_grades_recorded = db.query(func.count(models.GradeRecord.id)).filter(
+        models.GradeRecord.is_deleted == False,
+        models.GradeRecord.grade_value != None
+    ).scalar() or 0
+    
+    # Средняя оценка по школе
+    grade_records = db.query(models.GradeRecord.grade_value).filter(
+        models.GradeRecord.is_deleted == False,
+        models.GradeRecord.grade_value.in_(['2', '3', '4', '5'])
+    ).all()
+    
+    average_grade = None
+    if grade_records:
+        grades = [float(g[0]) for g in grade_records]
+        average_grade = sum(grades) / len(grades)
+    
+    return {
+        "total_teachers": total_teachers,
+        "total_students": total_students,
+        "total_groups": total_groups,
+        "total_subjects": total_subjects,
+        "active_teachers": active_teachers,
+        "total_grades_recorded": total_grades_recorded,
+        "average_grade": round(average_grade, 2) if average_grade else None
+    }
+
+
+def promote_groups_to_next_year(db: Session, group_ids: list[int]):
+    """Переводит группы на следующий курс"""
+    promoted = []
+    failed = []
+    
+    for group_id in group_ids:
+        try:
+            group = db.query(models.StudentGroup).filter(
+                models.StudentGroup.id == group_id
+            ).first()
+            
+            if not group:
+                failed.append(f"Группа {group_id} не найдена")
+                continue
+            
+            # Проверяем, что группа не выше 6 курса
+            if group.course_year >= 6:
+                failed.append(f"Группа {group.group_name} уже на последнем курсе")
+                continue
+            
+            # Увеличиваем курс
+            group.course_year += 1
+            promoted.append(f"Группа {group.group_name} переведена на {group.course_year} курс")
+        except Exception as e:
+            failed.append(f"Ошибка при переводе группы {group_id}: {str(e)}")
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        failed.append(f"Ошибка при сохранении: {str(e)}")
+    
+    return promoted, failed
