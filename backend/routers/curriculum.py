@@ -19,15 +19,26 @@ router = APIRouter(tags=["curriculum"])
 # ========== ГРУППЫ ==========
 
 @router.get("/groups/", response_model=List[schemas.Group])
-def read_groups(db: Session = Depends(get_db)):
-    """Получить все группы"""
-    return crud.get_groups(db)
+def read_groups(
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Получить группы, где преподаватель ведет занятия"""
+    if current_teacher.role == "admin":
+        return crud.get_groups(db)
+    return crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
 
 
 @router.get("/groups/by-course/{course}", response_model=List[schemas.Group])
-def get_groups_by_course(course: int, db: Session = Depends(get_db)):
-    """Получить группы по курсу"""
-    return db.query(models.StudentGroup).filter(models.StudentGroup.course_year == course).all()
+def get_groups_by_course(
+    course: int,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Получить группы курса, где преподаватель ведет занятия"""
+    if current_teacher.role == "admin":
+        return [group for group in crud.get_groups(db) if group.course_year == course]
+    return crud.get_groups_by_course_for_teacher(db, teacher_id=current_teacher.id, course_year=course)
 
 
 @router.post("/groups/", response_model=schemas.Group)
@@ -46,9 +57,21 @@ def create_group(
 def read_students(
     group_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
-    """Получить список студентов"""
-    return crud.get_students(db=db, group_id=group_id)
+    """Получить студентов из групп, где преподаватель ведет занятия"""
+    # Если конкретно указана группа, проверяем доступ преподавателя к ней
+    if group_id is not None:
+        group = crud.get_group_by_id(db, group_id=group_id)
+        if group is None:
+            raise HTTPException(status_code=404, detail="Группа не найдена")
+        
+        # Проверяем, что преподаватель может видеть студентов в этой группе
+        teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
+        if not any(g.id == group.id for g in teacher_groups):
+            raise HTTPException(status_code=403, detail="Нет доступа к этой группе")
+    
+    return crud.get_students_for_teacher(db=db, teacher_id=current_teacher.id, group_id=group_id)
 
 
 @router.post("/students/", response_model=schemas.Student)
@@ -61,6 +84,13 @@ def create_student(
     group = crud.get_group_by_id(db, group_id=student.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    
+    # Проверяем, что преподаватель может добавлять студентов в эту группу
+    # (группа должна быть в его списке групп)
+    teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
+    if not any(g.id == group.id for g in teacher_groups):
+        raise HTTPException(status_code=403, detail="Нельзя добавлять студентов в чужую группу")
+    
     return crud.create_student(db=db, student=student)
 
 
@@ -82,6 +112,16 @@ def get_subjects_by_group(
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
     """Получить предметы, которые преподаватель ведет в группе"""
+    # Проверяем, что группа существует
+    group = crud.get_group_by_id(db, group_id=group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    
+    # Проверяем, что преподаватель ведет занятия в этой группе
+    teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
+    if not any(g.id == group.id for g in teacher_groups):
+        raise HTTPException(status_code=403, detail="Нет доступа к этой группе")
+    
     assignments = db.query(models.TeachingAssignment).filter(
         models.TeachingAssignment.group_id == group_id,
         models.TeachingAssignment.teacher_id == current_teacher.id
@@ -134,6 +174,11 @@ def create_lesson(
     group = crud.get_group_by_id(db, group_id=lesson.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    
+    # Проверяем, что преподаватель может создавать уроки в этой группе
+    teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
+    if not any(g.id == group.id for g in teacher_groups):
+        raise HTTPException(status_code=403, detail="Нельзя создавать занятия в чужой группе")
 
     return crud.create_teacher_lesson(db=db, lesson=lesson, teacher_id=current_teacher.id)
 
