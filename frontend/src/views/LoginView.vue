@@ -54,6 +54,7 @@
 import { ref, onMounted} from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios' 
+import { getUserRole, hasUsableSession, storeAuthData } from '../api/authStorage'
 
 const rememberMe = ref(true)
 const email = ref('')
@@ -65,10 +66,15 @@ const router = useRouter()
 // АВТОМАТИЧЕСКИЙ ВХОД
 onMounted(() => {
   // Проверяем, есть ли уже сохраненный токен
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-  if (token) {
-    // Если токен найден, сразу переходим к журналу
-    router.push('/journal')
+  if (hasUsableSession()) {
+    // Получаем роль пользователя
+    const userRole = getUserRole()
+    // Если токен найден, перенаправляем в зависимости от роли
+    if (userRole === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push('/journal')
+    }
   }
 })
 
@@ -84,21 +90,33 @@ const handleLogin = async () => {
   try {
     // Отправляем запрос на наш бэкенд
     const response = await api.post('/token', formData)
-    const token = response.data.access_token
+    const { access_token, user_role, user_id, full_name, email: userEmail } = response.data
 
     // ЛОГИКА "ЗАПОМНИТЬ МЕНЯ"
-    if (rememberMe.value) {
-      // Сохраняем "навсегда" и чистим временное
-      localStorage.setItem('access_token', token)
-      sessionStorage.removeItem('access_token')
-    } else {
-      // Сохраняем временно и чистим "постоянное"
-      sessionStorage.setItem('access_token', token)
-      localStorage.removeItem('access_token')
-    }
+    storeAuthData(response.data, rememberMe.value)
+    const storage = { setItem: () => {} }
+    const otherStorage = { removeItem: () => {} }
+
+    // Сохраняем токен и информацию о пользователе
+    storage.setItem('access_token', access_token)
+    storage.setItem('user_role', user_role)
+    storage.setItem('user_id', user_id)
+    storage.setItem('full_name', full_name)
+    storage.setItem('email', userEmail)
+
+    // Чистим противоположное хранилище
+    otherStorage.removeItem('access_token')
+    otherStorage.removeItem('user_role')
+    otherStorage.removeItem('user_id')
+    otherStorage.removeItem('full_name')
+    otherStorage.removeItem('email')
     
-    // Автоматически перенаправляем пользователя на страницу журнала
-    router.push('/journal')
+    // Перенаправляем в зависимости от роли пользователя
+    if (user_role === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push('/journal')
+    }
   } catch (err) {
     if (err.response && err.response.status === 401) {
       error.value = 'Неверный email или пароль.'
