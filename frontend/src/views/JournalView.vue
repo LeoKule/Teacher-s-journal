@@ -389,7 +389,13 @@ const formatDate = (dateStr) => {
 const logout = () => {
   // Чистим оба хранилища
   localStorage.removeItem('access_token')
+  localStorage.removeItem('user_role')
+  localStorage.removeItem('user_id')
+  localStorage.removeItem('full_name')
   sessionStorage.removeItem('access_token')
+  sessionStorage.removeItem('user_role')
+  sessionStorage.removeItem('user_id')
+  sessionStorage.removeItem('full_name')
   
   router.push('/')
 }
