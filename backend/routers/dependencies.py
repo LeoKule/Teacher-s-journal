@@ -43,8 +43,22 @@ def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depen
     teacher = crud.get_teacher_by_email(db, email=email)
     if teacher is None:
         raise credentials_exception
+    
+    # Проверяем, активен ли учитель
+    if not teacher.is_active:
+        raise HTTPException(status_code=403, detail="Ваш аккаунт заблокирован")
 
     return teacher
+
+
+def get_current_admin(current_teacher: models.Teacher = Depends(get_current_teacher)):
+    """Проверяет, что текущий пользователь администратор"""
+    if current_teacher.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Требуется роль администратора"
+        )
+    return current_teacher
 
 
 def validate_grade_record_access(
