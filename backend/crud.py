@@ -8,6 +8,33 @@ def get_groups(db: Session):
     return db.query(models.StudentGroup).all()
 
 
+def get_groups_for_teacher(db: Session, teacher_id: int):
+    """Получить только группы, где преподаватель ведет занятия"""
+    return (
+        db.query(models.StudentGroup)
+        .distinct()
+        .join(models.TeachingAssignment, models.TeachingAssignment.group_id == models.StudentGroup.id)
+        .filter(models.TeachingAssignment.teacher_id == teacher_id)
+        .order_by(models.StudentGroup.course_year, models.StudentGroup.group_name)
+        .all()
+    )
+
+
+def get_groups_by_course_for_teacher(db: Session, teacher_id: int, course_year: int):
+    """Получить группы определенного курса, где преподаватель ведет занятия"""
+    return (
+        db.query(models.StudentGroup)
+        .distinct()
+        .join(models.TeachingAssignment, models.TeachingAssignment.group_id == models.StudentGroup.id)
+        .filter(
+            models.TeachingAssignment.teacher_id == teacher_id,
+            models.StudentGroup.course_year == course_year
+        )
+        .order_by(models.StudentGroup.group_name)
+        .all()
+    )
+
+
 def get_group_by_id(db: Session, group_id: int):
     return db.query(models.StudentGroup).filter(models.StudentGroup.id == group_id).first()
 
@@ -38,6 +65,25 @@ def get_students(db: Session, group_id: int | None = None):
     query = db.query(models.Student).filter(models.Student.is_deleted == False)
     if group_id is not None:
         query = query.filter(models.Student.group_id == group_id)
+    return query.order_by(models.Student.full_name).all()
+
+
+def get_students_for_teacher(db: Session, teacher_id: int, group_id: int | None = None):
+    """Получить студентов только из групп, где преподаватель ведет занятия"""
+    query = (
+        db.query(models.Student)
+        .distinct()
+        .join(models.StudentGroup, models.StudentGroup.id == models.Student.group_id)
+        .join(models.TeachingAssignment, models.TeachingAssignment.group_id == models.StudentGroup.id)
+        .filter(
+            models.TeachingAssignment.teacher_id == teacher_id,
+            models.Student.is_deleted == False
+        )
+    )
+    
+    if group_id is not None:
+        query = query.filter(models.Student.group_id == group_id)
+    
     return query.order_by(models.Student.full_name).all()
 
 
