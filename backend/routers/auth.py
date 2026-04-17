@@ -137,3 +137,47 @@ async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
 
     except jwt.PyJWTError as e:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+@router.post("/logout")
+async def logout(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+    current_teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db)
+):
+    """Выход из системы (logout) - добавляет токен в черный список"""
+    try:
+        # Декодируем токен, чтобы получить время истечения
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        expires_at_timestamp = payload.get("exp")
+        
+        if expires_at_timestamp:
+            # Конвертируем timestamp в datetime
+            expires_at = datetime.fromtimestamp(expires_at_timestamp, tz=timezone.utc)
+        else:
+            # По умолчанию, если exp не указана, берем время + 15 минут
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+        # Добавляем токен в черный список
+        auth.add_token_to_blacklist(
+            db=db,
+            token=token,
+            teacher_id=current_teacher.id,
+            expires_at=expires_at
+        )
+        
+        # Очищаем refresh token куку
+        response.delete_cookie(
+            key="refresh_token",
+            path="/",
+            domain=None
+        )
+        
+        logger.info(f"Logout successful for teacher: {current_teacher.email}")
+        
+        return {"detail": "Успешно завершили сеанс"}
+    
+    except jwt.PyJWTError as e:
+        logger.error(f"Error during logout: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
