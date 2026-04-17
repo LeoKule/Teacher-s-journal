@@ -1,5 +1,6 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 import jwt
@@ -7,9 +8,44 @@ import models
 import schemas
 import crud
 import auth
+import logging
 from routers.dependencies import get_db, get_current_teacher
+from collections import defaultdict
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
+
+# Настройка OAuth2
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter(tags=["auth"])
+
+# ========== ПРОСТОЙ RATE LIMITER ==========
+# Словарь для отслеживания попыток входа: {ip: [(timestamp, count), ...]}
+login_attempts = defaultdict(list)
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_ATTEMPT_WINDOW = 60  # окно в секундах
+
+
+def check_rate_limit(request: Request) -> bool:
+    """Проверяет rate limit для входа (5 попыток в минуту с IP)"""
+    client_ip = request.client.host
+    now = datetime.now(timezone.utc).timestamp()
+    
+    # Удаляем старые попытки (старше окна)
+    login_attempts[client_ip] = [
+        ts for ts in login_attempts[client_ip]
+        if now - ts < LOGIN_ATTEMPT_WINDOW
+    ]
+    
+    # Если превышено количество попыток - возвращаем False
+    if len(login_attempts[client_ip]) >= MAX_LOGIN_ATTEMPTS:
+        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        return False
+    
+    # Добавляем текущую попытку
+    login_attempts[client_ip].append(now)
+    return True
 
 
 @router.post("/register/", response_model=schemas.Teacher)
