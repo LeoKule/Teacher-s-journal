@@ -65,7 +65,6 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """Эндпоинт авторизации (логин)"""
     """Эндпоинт авторизации (логин) с rate limiting"""
     
     # =================== RATE LIMITING ===================
