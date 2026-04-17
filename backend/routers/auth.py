@@ -61,12 +61,24 @@ def register_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_d
 @router.post("/token")
 async def login_for_access_token(
     response: Response,
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     """Эндпоинт авторизации (логин)"""
+    """Эндпоинт авторизации (логин) с rate limiting"""
+    
+    # =================== RATE LIMITING ===================
+    if not check_rate_limit(request):
+        logger.warning(f"Login rate limit exceeded for IP: {request.client.host}")
+        raise HTTPException(
+            status_code=429,
+            detail="Слишком много попыток входа. Попробуйте позже."
+        )
+    
     user = auth.authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.warning(f"Failed login attempt for email: {form_data.username}")
         raise HTTPException(status_code=400, detail="Неверный логин или пароль")
 
     # Создаем Access Token
@@ -92,6 +104,8 @@ async def login_for_access_token(
         path="/",
     )
 
+    logger.info(f"Successful login for email: {user.email}")
+    
     return {
         "access_token": access_token, 
         "token_type": "bearer",
