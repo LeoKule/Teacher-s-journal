@@ -94,6 +94,45 @@ def get_student_by_id(db: Session, student_id: int):
     ).first()
 
 
+# ========== SOFT DELETE И RESTORE СТУДЕНТОВ ==========
+
+def delete_student(db: Session, student_id: int) -> models.Student:
+    """Мягкое удаление студента (помечаем as deleted, не удаляем из БД)"""
+    student = get_student_by_id(db, student_id)
+    if student is None:
+        return None
+    
+    student.is_deleted = True
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def restore_student(db: Session, student_id: int) -> models.Student:
+    """Восстанавливает удаленного студента из soft-delete"""
+    student = db.query(models.Student).filter(
+        models.Student.id == student_id
+    ).first()
+    
+    if student is None:
+        return None
+    
+    student.is_deleted = False
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def get_deleted_students(db: Session, group_id: int | None = None) -> list[models.Student]:
+    """Получить список удаленных студентов (для восстановления)"""
+    query = db.query(models.Student).filter(models.Student.is_deleted == True)
+    
+    if group_id is not None:
+        query = query.filter(models.Student.group_id == group_id)
+    
+    return query.order_by(models.Student.full_name).all()
+
+
 def get_teacher_by_email(db: Session, email: str):
     """Ищет преподавателя в базе по email"""
     return db.query(models.Teacher).filter(models.Teacher.email == email).first()
