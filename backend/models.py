@@ -46,15 +46,19 @@ class StudentGroup(Base):
 #   Модель Студента
 class Student(Base):
     __tablename__ = "students"
+    __table_args__ = (
+        # Индексы для быстрого поиска по group_id и is_deleted флагу
+        # Используется в фильтрации "студенты из группы", исключении удаленных
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(150), nullable=False)
 
     # Внешний ключ: ссылается на id из таблицы student_groups
-    group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False, index=True)
     
     # Soft Delete: флаг удаления (не удаляем из БД, просто помечаем как удаленное)
-    is_deleted = Column(Boolean, default=False, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
 
     # Обратная связь для SQLAlchemy: позволяет у объекта студента
     # сразу получить объект его группы (student.group.group_name)
@@ -64,10 +68,13 @@ class Student(Base):
 #   Предмет, который будет в занятии
 class Subject(Base):
     __tablename__ = "subjects"
+    __table_args__ = (
+        # Индекс на teacher_id для быстрого поиска предметов учителя
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
     
     # Soft Delete: флаг удаления (можно восстановить предмет и его уроки)
     is_deleted = Column(Boolean, default=False, nullable=False)
@@ -79,11 +86,14 @@ class Subject(Base):
 #   Занятия
 class Lesson(Base):
     __tablename__ = "lessons"
+    __table_args__ = (
+        # Индексы для быстрого поиска уроков по учителю, предмету, группе
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
-    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
-    group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False, index=True)
+    group_id = Column(Integer, ForeignKey("student_groups.id"), nullable=False, index=True)
     lesson_date = Column(Date, nullable=False)
     lesson_topic = Column(String(255), nullable=True)
     
@@ -108,8 +118,8 @@ class GradeRecord(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
     grade_value = Column(String(10), nullable=True)
     attendance_status = Column(String(20), nullable=False, default="present")
     comment = Column(String(255), nullable=True)
