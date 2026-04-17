@@ -44,6 +44,24 @@
               Группы
             </v-tab>
 
+            <!-- Вкладка: Import студентов -->
+            <v-tab value="student-import">
+              <v-icon start>mdi-file-upload</v-icon>
+              Import студентов
+            </v-tab>
+
+            <!-- Вкладка: Восстановление студентов -->
+            <v-tab value="student-recovery">
+              <v-icon start>mdi-restore</v-icon>
+              Восстановить студентов
+            </v-tab>
+
+            <!-- Вкладка: Уведомления -->
+            <v-tab value="notifications">
+              <v-icon start>mdi-bell</v-icon>
+              Уведомления
+            </v-tab>
+
           </v-tabs>
 
           <v-window v-model="activeTab">
@@ -65,6 +83,21 @@
               <!-- СОДЕРЖИМОЕ: Группы -->
               <v-window-item value="groups">
                 <AdminGroups />
+              </v-window-item>
+
+              <!-- СОДЕРЖИМОЕ: Import студентов -->
+              <v-window-item value="student-import">
+                <AdminStudentImport />
+              </v-window-item>
+
+              <!-- СОДЕРЖИМОЕ: Восстановление студентов -->
+              <v-window-item value="student-recovery">
+                <AdminStudentRecovery />
+              </v-window-item>
+
+              <!-- СОДЕРЖИМОЕ: Уведомления -->
+              <v-window-item value="notifications">
+                <AdminNotifications />
               </v-window-item>
             </v-window>
           
