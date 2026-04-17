@@ -30,21 +30,16 @@ app = FastAPI(
 
 # ========== MIDDLEWARE ==========
 
-# Настройка CORS
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://localhost:3000",
-]
-
+# Настройка CORS из конфигурации
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logger.info(f"CORS настроена для origins: {settings.ALLOWED_ORIGINS}")
 
 # ========== РОУТЕРЫ ==========
 
@@ -59,4 +54,5 @@ app.include_router(admin.router)
 @app.get("/health")
 def health_check():
     """Проверка здоровья сервера"""
+    logger.info("Health check запрос")
     return {"status": "ok"}
