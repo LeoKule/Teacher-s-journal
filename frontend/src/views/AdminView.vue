@@ -4,12 +4,14 @@
        Панель администратора
     </v-toolbar-title>
     <v-spacer></v-spacer>
+    <v-btn icon @click="toggleTheme" class="mr-2">
+      <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+    </v-btn>
     <v-chip class="mr-4" variant="outlined" label>
       {{ currentUser.full_name }}
     </v-chip>
     <v-btn icon @click="handleLogout">
       <v-icon>mdi-logout</v-icon>
-      <v-tooltip activator="parent">Выход</v-tooltip>
     </v-btn>
   </v-app-bar>
 
