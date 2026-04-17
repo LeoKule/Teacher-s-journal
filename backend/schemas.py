@@ -1,5 +1,6 @@
 from datetime import date, time
 from typing import List, Optional, Union, Literal
+import re
 from pydantic import BaseModel, Field, EmailStr, field_validator
 
 
@@ -35,6 +36,59 @@ class Student(StudentBase):
     id: int
     class Config:
         from_attributes = True
+
+
+# ========== BULK IMPORT СТУДЕНТОВ ==========
+
+class StudentBulkImportRow(BaseModel):
+    """Одна строка CSV для импорта студента"""
+    last_name: str = Field(min_length=1, max_length=100, description="Фамилия студента")
+    first_name: str = Field(min_length=1, max_length=100, description="Имя студента")
+    group_name: str = Field(min_length=1, max_length=50, description="Название группы (должна существовать)")
+    student_id: Optional[str] = Field(None, max_length=50, description="Опциональный ID студента")
+
+
+class StudentBulkImportRequest(BaseModel):
+    """Запрос на bulk import студентов из CSV"""
+    rows: List[StudentBulkImportRow] = Field(..., min_items=1, max_items=500, description="Список студентов для импорта")
+    dry_run: bool = Field(False, description="Если True, только проверяет валидность без сохранения")
+
+
+class StudentBulkImportError(BaseModel):
+    """Ошибка при импорте одного студента"""
+    row_number: int = Field(..., description="Номер строки в CSV (1-indexed)")
+    last_name: str
+    first_name: str
+    group_name: str
+    error: str = Field(..., description="Описание ошибки")
+
+
+class StudentBulkImportResult(BaseModel):
+    """Результат bulk import операции"""
+    success: bool
+    imported_count: int = Field(0, description="Количество успешно импортированных студентов")
+    error_count: int = Field(0, description="Количество ошибок")
+    errors: List[StudentBulkImportError] = Field(default_factory=list, description="Список ошибок")
+    message: str
+
+
+class DeletedStudent(BaseModel):
+    """Удаленный студент (для восстановления)"""
+    id: int
+    full_name: str
+    group_id: int
+    group_name: str
+    
+    class Config:
+        from_attributes = True
+
+
+class StudentRestoreResponse(BaseModel):
+    """Ответ при восстановлении студента"""
+    success: bool
+    student_id: int
+    full_name: str
+    message: str
 
 
 class SubjectBase(BaseModel):
