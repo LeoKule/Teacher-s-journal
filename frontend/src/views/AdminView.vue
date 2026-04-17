@@ -110,15 +110,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import api from '../api/axios'
 import AdminStatistics from '../components/admin/AdminStatistics.vue'
 import AdminTeachers from '../components/admin/AdminTeachers.vue'
 import AdminAuditLogs from '../components/admin/AdminAuditLogs.vue'
 import AdminGroups from '../components/admin/AdminGroups.vue'
+import AdminStudentImport from '../components/admin/AdminStudentImport.vue'
+import AdminStudentRecovery from '../components/admin/AdminStudentRecovery.vue'
+import AdminNotifications from '../components/admin/AdminNotifications.vue'
 import { clearAuthData } from '../api/authStorage'
 
 const router = useRouter()
+const theme = useTheme()
 const activeTab = ref('statistics')
+const isDarkMode = ref(false)
 const currentUser = ref({
   full_name: '',
   email: '',
@@ -126,6 +132,13 @@ const currentUser = ref({
 })
 
 onMounted(() => {
+  // Загружаем сохраненное предпочтение темы
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') {
+    isDarkMode.value = true
+    theme.global.name.value = 'dark'
+  }
+
   // Получаем информацию администратора из localStorage (она была сохранена при логине)
   const fullName = localStorage.getItem('full_name') || sessionStorage.getItem('full_name')
   const email = localStorage.getItem('email') || sessionStorage.getItem('email')
@@ -141,6 +154,13 @@ onMounted(() => {
     router.push('/')
   }
 })
+
+const toggleTheme = () => {
+  isDarkMode.value = !isDarkMode.value
+  const newTheme = isDarkMode.value ? 'dark' : 'light'
+  theme.global.name.value = newTheme
+  localStorage.setItem('theme', newTheme)
+}
 
 const handleLogout = () => {
   clearAuthData()
