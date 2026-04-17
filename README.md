@@ -176,5 +176,3 @@ print(secrets.token_hex(32))
 - Убедитесь, что БД `teacher_journal` создана (или запустите `seed_data.py`)
 
 ---
-
-**Последнее обновление:** April 2026
