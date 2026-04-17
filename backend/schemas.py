@@ -483,6 +483,23 @@ class GroupPromotionResponse(BaseModel):
     details: List[str] = []
 
 
+# ========== SCHEMAS ДЛЯ УВЕДОМЛЕНИЙ ==========
+
+class NotificationSendRequest(BaseModel):
+    """Запрос на отправку уведомления преподавателям"""
+    notification_type: str = Field(min_length=1, description="Тип уведомления: announcement, reminder, completion, technical, other")
+    title: str = Field(min_length=1, max_length=100, description="Заголовок уведомления")
+    message: str = Field(min_length=1, max_length=1000, description="Текст уведомления")
+    recipient_teacher_ids: List[int] = Field(description="Список ID преподавателей-получателей")
+
+
+class NotificationSendResponse(BaseModel):
+    """Ответ об отправке уведомления"""
+    success: bool
+    message: str
+    recipients_count: int
+
+
 # Схема для ответа с токеном
 class Token(BaseModel):
     access_token: str
