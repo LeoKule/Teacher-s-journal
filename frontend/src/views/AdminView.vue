@@ -169,4 +169,8 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
+:deep(.admin-section-title) {
+  font-size: 1.75rem !important;
+  line-height: 1.35 !important;
+}
 </style>
