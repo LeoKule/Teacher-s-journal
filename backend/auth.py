@@ -68,3 +68,33 @@ def authenticate_user(db: Session, email: str, password: str):
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.Teacher).filter(models.Teacher.email == email).first()
+
+
+# ========== ТОКЕН BLACKLIST ==========
+
+def add_token_to_blacklist(db: Session, token: str, teacher_id: Optional[int], expires_at: datetime) -> None:
+    """Добавляет токен в чёрный список (при logout или token revocation)"""
+    blacklist_entry = models.TokenBlacklist(
+        token=token,
+        teacher_id=teacher_id,
+        expires_at=expires_at
+    )
+    db.add(blacklist_entry)
+    db.commit()
+
+
+def is_token_blacklisted(db: Session, token: str) -> bool:
+    """Проверяет, находится ли токен в чёрном списке"""
+    blacklist_entry = db.query(models.TokenBlacklist).filter(
+        models.TokenBlacklist.token == token
+    ).first()
+    return blacklist_entry is not None
+
+
+def cleanup_expired_blacklist_tokens(db: Session) -> None:
+    """Удаляет истёкшие записи из чёрного списка (можно запускать периодически)"""
+    now = datetime.now(timezone.utc)
+    db.query(models.TokenBlacklist).filter(
+        models.TokenBlacklist.expires_at < now
+    ).delete()
+    db.commit()
