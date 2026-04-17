@@ -30,6 +30,14 @@ def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depen
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # =================== ПРОВЕРКА ЧЕРНОГО СПИСКА ТОКЕНОВ ===================
+    # Проверяем, находится ли токен в черном списке (logout/revocation)
+    if auth.is_token_blacklisted(db, token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен был отзван. Пожалуйста, войдите снова."
+        )
+
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
