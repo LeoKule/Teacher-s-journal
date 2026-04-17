@@ -13,6 +13,39 @@ import '@mdi/font/css/materialdesignicons.css'
 const vuetify = createVuetify({
   components,
   directives,
+  theme: {
+    defaultTheme: 'light',
+    themes: {
+      light: {
+        colors: {
+          primary: '#1976D2',
+          secondary: '#26A69A',
+          accent: '#82B1FF',
+          error: '#F44336',
+          warning: '#FFC107',
+          info: '#2196F3',
+          success: '#4CAF50',
+          background: '#FFFFFF',
+          surface: '#F5F5F5',
+          'surface-variant': '#EEEEEE'
+        }
+      },
+      dark: {
+        colors: {
+          primary: '#6A8FD9',
+          secondary: '#4DB8A8',
+          accent: '#6AB7FF',
+          error: '#EF9A9A',
+          warning: '#FFB74D',
+          info: '#64B5F6',
+          success: '#81C784',
+          background: '#121212',
+          surface: '#1E1E1E',
+          'surface-variant': '#2A2A2A'
+        }
+      }
+    }
+  }
 })
 
 // 2. Создаем экземпляр приложения
