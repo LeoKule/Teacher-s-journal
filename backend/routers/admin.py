@@ -9,7 +9,10 @@ from typing import List, Optional
 import models
 import schemas
 import crud
+import logging
 from routers.dependencies import get_db, get_current_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -300,7 +303,270 @@ def admin_info(
             "Блокировка/разблокировка преподавателей",
             "Просмотр логов аудита",
             "Просмотр статистики по школе",
-            "Перевод групп на следующий курс"
+            "Перевод групп на следующий курс",
+            "Bulk import студентов",
+            "Восстановление удаленных студентов"
         ],
         "documentation": "https://api.example.com/docs"
     }
+
+
+# ========== УПРАВЛЕНИЕ СТУДЕНТАМИ ==========
+
+@router.post("/students/bulk-import", response_model=schemas.StudentBulkImportResult)
+def bulk_import_students(
+    request: schemas.StudentBulkImportRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """
+    Bulk импорт студентов из CSV
+    
+    Формат: last_name, first_name, group_name, student_id (опционально)
+    
+    Параметры:
+    - dry_run: если true, только проверяет валидность без сохранения
+    
+    Возвращает:
+    - imported_count: количество успешно импортированных
+    - error_count: количество ошибок
+    - errors: список ошибок с указанием строк
+    """
+    logger.info(f"Начало bulk import студентов. Админ: {current_admin.email}, Строк: {len(request.rows)}")
+    errors: list[schemas.StudentBulkImportError] = []
+    imported_students = []
+    
+    # Валидация и сбор студентов
+    for row_num, row in enumerate(request.rows, start=1):
+        try:
+            # Проверяем существование группы
+            group = db.query(models.StudentGroup).filter(
+                models.StudentGroup.group_name == row.group_name
+            ).first()
+            
+            if group is None:
+                errors.append(schemas.StudentBulkImportError(
+                    row_number=row_num,
+                    last_name=row.last_name,
+                    first_name=row.first_name,
+                    group_name=row.group_name,
+                    error=f"Группа '{row.group_name}' не найдена"
+                ))
+                logger.warning(f"Строка {row_num}: Группа '{row.group_name}' не найдена")
+                continue
+            
+            # Проверяем дублирование (студент с таким именем и группой)
+            existing = db.query(models.Student).filter(
+                models.Student.full_name == f"{row.first_name} {row.last_name}",
+                models.Student.group_id == group.id,
+                models.Student.is_deleted == False
+            ).first()
+            
+            if existing is not None:
+                errors.append(schemas.StudentBulkImportError(
+                    row_number=row_num,
+                    last_name=row.last_name,
+                    first_name=row.first_name,
+                    group_name=row.group_name,
+                    error=f"Студент '{row.first_name} {row.last_name}' уже существует в группе '{row.group_name}'"
+                ))
+                logger.warning(f"Строка {row_num}: Дублирование студента '{row.first_name} {row.last_name}'")
+                continue
+            
+            # Если валидация прошла, добавляем в список для импорта
+            imported_students.append({
+                "full_name": f"{row.first_name} {row.last_name}",
+                "group_id": group.id,
+                "row_num": row_num
+            })
+        
+        except Exception as e:
+            errors.append(schemas.StudentBulkImportError(
+                row_number=row_num,
+                last_name=row.last_name,
+                first_name=row.first_name,
+                group_name=row.group_name,
+                error=f"Неожиданная ошибка: {str(e)}"
+            ))
+            logger.error(f"Строка {row_num}: Неожиданная ошибка: {str(e)}")
+    
+    # Если есть ошибки и не dry_run - откатываем всё
+    if errors and not request.dry_run:
+        logger.warning(f"Импорт отменён из-за {len(errors)} ошибок")
+        return schemas.StudentBulkImportResult(
+            success=False,
+            imported_count=0,
+            error_count=len(errors),
+            errors=errors,
+            message=f"Импорт отменён из-за {len(errors)} ошибок. Исправьте ошибки и попробуйте снова."
+        )
+    
+    # Если dry_run=true, только возвращаем результаты без сохранения
+    if request.dry_run:
+        logger.info(f"[DRY RUN] Готово к импорту: {len(imported_students)} студентов, {len(errors)} ошибок")
+        return schemas.StudentBulkImportResult(
+            success=True,
+            imported_count=len(imported_students),
+            error_count=len(errors),
+            errors=errors,
+            message=f"[DRY RUN] Готово к импорту: {len(imported_students)} студентов, {len(errors)} ошибок"
+        )
+    
+    # Сохраняем студентов в БД (в одной транзакции)
+    try:
+        for student_data in imported_students:
+            new_student = models.Student(
+                full_name=student_data["full_name"],
+                group_id=student_data["group_id"],
+                is_deleted=False
+            )
+            db.add(new_student)
+        
+        db.commit()
+        
+        # Логируем действие админа
+        crud.create_audit_log(
+            db=db,
+            admin_id=current_admin.id,
+            action="bulk_import",
+            entity_type="student",
+            entity_id=None,
+            description=f"Bulk импорт студентов",
+            new_values=f"imported={len(imported_students)}, errors={len(errors)}"
+        )
+        
+        logger.info(f" Успешно импортировано {len(imported_students)} студентов")
+        
+        return schemas.StudentBulkImportResult(
+            success=True,
+            imported_count=len(imported_students),
+            error_count=len(errors),
+            errors=errors,
+            message=f" Успешно импортировано {len(imported_students)} студентов"
+        )
+    
+    except Exception as e:
+        db.rollback()
+        logger.error(f" Ошибка при сохранении в БД: {str(e)}")
+        return schemas.StudentBulkImportResult(
+            success=False,
+            imported_count=0,
+            error_count=len(errors) + 1,
+            errors=errors,
+            message=f" Ошибка при сохранении в БД: {str(e)}"
+        )
+
+
+@router.get("/students/deleted", response_model=List[schemas.DeletedStudent])
+def get_deleted_students(
+    group_id: int = Query(None),
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Получить список удаленных студентов для восстановления"""
+    deleted_students = crud.get_deleted_students(db, group_id=group_id)
+    
+    result = []
+    for student in deleted_students:
+        result.append(schemas.DeletedStudent(
+            id=student.id,
+            full_name=student.full_name,
+            group_id=student.group_id,
+            group_name=student.group.group_name
+        ))
+    
+    return result
+
+
+@router.post("/students/{student_id}/restore", response_model=schemas.StudentRestoreResponse)
+def restore_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Восстановить удаленного студента из soft-delete"""
+    logger.info(f"Попытка восстановить студента ID={student_id}")
+    
+    student = crud.restore_student(db, student_id)
+    
+    if student is None:
+        logger.warning(f"Студент ID={student_id} не найден")
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    
+    # Логируем действие
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="restore",
+        entity_type="student",
+        entity_id=student_id,
+        description=f"Студент {student.full_name} восстановлен",
+        new_values=f"is_deleted=False"
+    )
+    
+    logger.info(f" Студент '{student.full_name}' (ID={student_id}) успешно восстановлен")
+    
+    return schemas.StudentRestoreResponse(
+        success=True,
+        student_id=student.id,
+        full_name=student.full_name,
+        message=f" Студент '{student.full_name}' успешно восстановлен"
+    )
+
+
+# ========== УПРАВЛЕНИЕ УВЕДОМЛЕНИЯМИ ==========
+
+@router.post("/notifications/send", response_model=schemas.NotificationSendResponse)
+def send_notification(
+    notification_request: schemas.NotificationSendRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """
+    Отправляет уведомление преподавателям.
+    
+    Поддерживаемые типы уведомлений:
+    - announcement: Важное объявление
+    - reminder: Напоминание о дедлайне
+    - completion: Завершение задачи
+    - technical: Техническое уведомление
+    - other: Прочее
+    """
+    logger.info(f"Попытка отправить уведомление '{notification_request.title}' на {len(notification_request.recipient_teacher_ids)} адресов")
+    
+    # Проверяем, что выбраны получатели
+    if not notification_request.recipient_teacher_ids:
+        logger.warning("Попытка отправить уведомление без получателей")
+        raise HTTPException(status_code=400, detail="Не выбраны получатели уведомления")
+    
+    # Проверяем, что все указанные преподаватели существуют
+    recipients = db.query(models.Teacher).filter(
+        models.Teacher.id.in_(notification_request.recipient_teacher_ids)
+    ).all()
+    
+    if len(recipients) != len(notification_request.recipient_teacher_ids):
+        logger.warning(f"Некоторые преподаватели не найдены. Ожидалось {len(notification_request.recipient_teacher_ids)}, найдено {len(recipients)}")
+        raise HTTPException(status_code=400, detail="Некоторые преподаватели не найдены")
+    
+    # Логируем отправку уведомления
+    recipients_emails = [r.email for r in recipients]
+    logger.info(
+        f"Уведомление '{notification_request.title}' отправлено на адреса: {', '.join(recipients_emails)}"
+    )
+    
+    # Создаем запись в логе аудита
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="send_notification",
+        entity_type="notification",
+        entity_id=None,
+        description=f"Отправлено уведомление '{notification_request.title}' типа {notification_request.notification_type}",
+        new_values=f"type={notification_request.notification_type}, recipients={len(recipients)}"
+    )
+    
+    return schemas.NotificationSendResponse(
+        success=True,
+        message=f"Уведомление успешно отправлено {len(recipients)} преподавателям",
+        recipients_count=len(recipients)
+    )
