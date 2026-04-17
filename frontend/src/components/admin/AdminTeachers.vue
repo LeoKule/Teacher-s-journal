@@ -3,7 +3,7 @@
     <!-- Кнопка создания преподавателя -->
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between">
-        <h6 class="text-h6 font-weight-bold"> Управление преподавателями</h6>
+        <h6 class="admin-section-title text-h6 font-weight-bold"> Управление преподавателями</h6>
         <v-btn 
           color="indigo-darken-2" 
           prepend-icon="mdi-plus"

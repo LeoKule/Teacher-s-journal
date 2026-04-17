@@ -1,7 +1,7 @@
 <template>
   <v-card-text class="pa-6">
     <v-row class="mb-6">
-      <v-col cols="12" class="text-h6 font-weight-bold">
+      <v-col cols="12" class="admin-section-title text-h6 font-weight-bold">
         Логи аудита
       </v-col>
     </v-row>

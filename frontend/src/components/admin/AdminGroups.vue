@@ -2,7 +2,7 @@
   <v-card-text class="pa-6">
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between">
-        <h6 class="text-h6 font-weight-bold"> Управление группами</h6>
+        <h6 class="admin-section-title text-h6 font-weight-bold"> Управление группами</h6>
         <v-btn 
           color="orange-darken-2" 
           prepend-icon="mdi-arrow-up"
