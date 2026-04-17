@@ -375,7 +375,24 @@ class TeacherBase(BaseModel):
     full_name: str
 
 class TeacherCreate(TeacherBase):
-    password: str # При регистрации мы получаем чистый пароль от пользователя
+    password: str = Field(min_length=8, max_length=128, description="Пароль: минимум 8 символов, должен содержать цифру и спец. символ")
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        """Валидирует пароль: проверяет минимальнуюдлину, наличие цифры и спец. символа"""
+        if len(v) < 8 or len(v) > 128:
+            raise ValueError('Пароль должен быть от 8 до 128 символов')
+        
+        # Проверка наличия цифры
+        if not re.search(r'\d', v):
+            raise ValueError('Пароль должен содержать как минимум одну цифру')
+        
+        # Проверка наличия специального символа
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', v):
+            raise ValueError('Пароль должен содержать как минимум один специальный символ (!@#$%^&*() и т.д.)')
+        
+        return v
 
 class Teacher(TeacherBase):
     id: int
