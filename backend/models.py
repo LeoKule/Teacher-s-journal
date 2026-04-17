@@ -237,3 +237,15 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     admin = relationship("Teacher", back_populates="audit_logs", foreign_keys=[admin_id])
+
+
+# ========== ТОКЕН ЧЕРНЫЙ СПИСОК ==========
+class TokenBlacklist(Base):
+    """Хранит blacklist токенов (для logout и token revocation)"""
+    __tablename__ = "token_blacklist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
+    expires_at = Column(DateTime, nullable=False)  # Когда истекает сам токен
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
