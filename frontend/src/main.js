@@ -1,7 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from './router' // Наш роутер
-
+import router from './router'
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
@@ -50,10 +49,8 @@ const vuetify = createVuetify({
 
 // 2. Создаем экземпляр приложения
 const app = createApp(App)
-
 // 3. Подключаем плагины (Роутер и Vuetify)
 app.use(router)
 app.use(vuetify)
-
-// 4. Монтируем в HTML
+// 4. Подключаем в HTML
 app.mount('#app')

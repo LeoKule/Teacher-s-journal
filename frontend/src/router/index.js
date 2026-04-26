@@ -36,7 +36,6 @@ router.beforeEach((to, from, next) => {
   if (!isAuthenticated) {
     clearAuthData()
   }
-  
   if (to.name !== 'Login' && !isAuthenticated) {
     next({ name: 'Login' })
   } else if (to.meta.requiresAdmin && userRole !== 'admin') {
@@ -54,5 +53,4 @@ router.beforeEach((to, from, next) => {
     next()
   }
 })
-
 export default router
