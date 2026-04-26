@@ -3,7 +3,7 @@ import { clearAuthData, getAccessToken, updateStoredAccessToken } from './authSt
 
 const api = axios.create({
     baseURL: 'http://localhost:8000', 
-    withCredentials: true // ОЧЕНЬ ВАЖНО! Разрешает отправку кук на сервер
+    withCredentials: true // Разрешает отправку кук на сервер
 });
 
 // Добавляем токен к каждому запросу
@@ -29,15 +29,13 @@ api.interceptors.response.use(
       try {
         // Пробуем получить новый access_token (кук с refresh отправится автоматически)
         const response = await axios.post('http://localhost:8000/refresh', {}, { withCredentials: true });
-        
         // Сохраняем новый токен
         updateStoredAccessToken(response.data.access_token);
-        
         // Повторяем оригинальный запрос с новым токеном
         originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
         return api(originalRequest);
       } catch (e) {
-        // Если refresh тоже протух, выкидываем на страницу логина
+        // Если refresh тоже испортился, выкидываем на страницу логина
         clearAuthData();
         window.location.href = '/';
       }
@@ -45,5 +43,4 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 )
-
 export default api;
