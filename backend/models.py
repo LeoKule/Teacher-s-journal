@@ -48,9 +48,7 @@ class Student(Base):
     __tablename__ = "students"
     __table_args__ = (
         # Индексы для быстрого поиска по group_id и is_deleted флагу
-        # Используется в фильтрации "студенты из группы", исключении удаленных
     )
-
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(150), nullable=False)
 
