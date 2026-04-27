@@ -193,6 +193,58 @@
       </template>
     </v-data-table>
 
+    <!-- Диалог редактирования преподавателя -->
+    <v-dialog v-model="showEditDialog" width="500">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="bg-indigo-darken-2 text-white">
+           Редактировать преподавателя
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <v-form @submit.prevent="submitEditTeacher">
+            <v-text-field
+              v-model="editedTeacher.full_name"
+              label="ФИО"
+              variant="outlined"
+              class="mb-4"
+              prepend-inner-icon="mdi-account"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="editedTeacher.email"
+              label="Email"
+              variant="outlined"
+              class="mb-4"
+              prepend-inner-icon="mdi-email"
+              type="email"
+            ></v-text-field>
+
+            <v-select
+              v-model="editedTeacher.role"
+              label="Роль"
+              variant="outlined"
+              :items="['teacher', 'admin']"
+              class="mb-4"
+              prepend-inner-icon="mdi-shield-account"
+            ></v-select>
+
+            <div class="d-flex gap-3">
+              <v-btn variant="outlined" @click="showEditDialog = false" class="flex-grow-1">
+                Отмена
+              </v-btn>
+              <v-btn
+                type="submit"
+                color="indigo-darken-2"
+                class="flex-grow-1"
+                :loading="editLoading"
+              >
+                Сохранить
+              </v-btn>
+            </div>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
     <!-- Диалог сброса пароля -->
     <v-dialog v-model="showResetPasswordDialog" width="500">
       <v-card class="rounded-lg" elevation="4">
@@ -246,10 +298,14 @@ const searchQuery = ref('')
 const showCreateDialog = ref(false)
 const showPasswordDialog = ref(false)
 const showResetPasswordDialog = ref(false)
+const showEditDialog = ref(false)
 const createLoading = ref(false)
 const resetLoading = ref(false)
+const editLoading = ref(false)
 const selectedTeacherId = ref(null)
 const newPassword = ref('')
+
+const editedTeacher = ref({ id: null, full_name: '', email: '', role: 'teacher' })
 
 const newTeacher = ref({
   full_name: '',
@@ -359,8 +415,30 @@ const copyPassword = () => {
 }
 
 const editTeacher = (teacher) => {
-  // TODO: Реализовать редактирование преподавателя
-  console.log('Редактирование преподавателя:', teacher)
+  editedTeacher.value = { id: teacher.id, full_name: teacher.full_name, email: teacher.email, role: teacher.role }
+  showEditDialog.value = true
+}
+
+const submitEditTeacher = async () => {
+  if (!editedTeacher.value.full_name || !editedTeacher.value.email) {
+    error.value = 'Заполните все поля'
+    return
+  }
+  try {
+    editLoading.value = true
+    await api.put(`/admin/teachers/${editedTeacher.value.id}`, {
+      full_name: editedTeacher.value.full_name,
+      email: editedTeacher.value.email,
+      role: editedTeacher.value.role
+    })
+    success.value = 'Данные преподавателя обновлены'
+    showEditDialog.value = false
+    await loadTeachers()
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Ошибка при обновлении'
+  } finally {
+    editLoading.value = false
+  }
 }
 
 onMounted(() => {
