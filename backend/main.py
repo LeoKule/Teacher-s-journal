@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import logging
 import models
-from database import engine
+
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 
@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 # Импортируем роутеры
 from routers import auth, journal, curriculum, admin
-
-# Создаем таблицы в БД
-models.Base.metadata.create_all(bind=engine)
 
 # Инициализируем приложение
 app = FastAPI(
