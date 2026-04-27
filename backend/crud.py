@@ -1171,6 +1171,80 @@ def get_school_statistics(db: Session):
     }
 
 
+def update_student(db: Session, student_id: int, data: schemas.StudentUpdate) -> models.Student | None:
+    student = get_student_by_id(db, student_id)
+    if student is None:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(student, field, value)
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def update_subject(db: Session, subject_id: int, data: schemas.SubjectUpdate) -> models.Subject | None:
+    subject = db.query(models.Subject).filter(
+        models.Subject.id == subject_id,
+        models.Subject.is_deleted == False
+    ).first()
+    if subject is None:
+        return None
+    subject.name = data.name
+    db.commit()
+    db.refresh(subject)
+    return subject
+
+
+def update_group(db: Session, group_id: int, data: schemas.GroupUpdate) -> models.StudentGroup | None:
+    group = db.query(models.StudentGroup).filter(models.StudentGroup.id == group_id).first()
+    if group is None:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(group, field, value)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def update_lesson(db: Session, lesson_id: int, data: schemas.LessonUpdate) -> models.Lesson | None:
+    lesson = db.query(models.Lesson).filter(
+        models.Lesson.id == lesson_id,
+        models.Lesson.is_deleted == False
+    ).first()
+    if lesson is None:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(lesson, field, value)
+    db.commit()
+    db.refresh(lesson)
+    return lesson
+
+
+def update_teacher_profile(
+    db: Session,
+    teacher: models.Teacher,
+    data: schemas.ProfileUpdate
+) -> models.Teacher | None:
+    if data.new_password:
+        if not data.current_password or not auth.verify_password(data.current_password, teacher.password_hash):
+            return None
+        teacher.password_hash = auth.get_password_hash(data.new_password)
+    if data.full_name:
+        teacher.full_name = data.full_name
+    if data.email:
+        existing = db.query(models.Teacher).filter(
+            models.Teacher.email == data.email,
+            models.Teacher.id != teacher.id
+        ).first()
+        if existing:
+            return None
+        teacher.email = data.email
+    teacher.updated_at = auth.datetime.now(auth.timezone.utc)
+    db.commit()
+    db.refresh(teacher)
+    return teacher
+
+
 def promote_groups_to_next_year(db: Session, group_ids: list[int]):
     """Переводит группы на следующий курс"""
     promoted = []
