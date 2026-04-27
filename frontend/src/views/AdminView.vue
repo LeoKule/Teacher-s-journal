@@ -56,6 +56,12 @@
               Восстановить студентов
             </v-tab>
 
+            <!-- Вкладка: Аналитика -->
+            <v-tab value="analytics">
+              <v-icon start>mdi-chart-line</v-icon>
+              Аналитика
+            </v-tab>
+
             <!-- Вкладка: Уведомления -->
             <v-tab value="notifications">
               <v-icon start>mdi-bell</v-icon>
@@ -95,6 +101,11 @@
                 <AdminStudentRecovery />
               </v-window-item>
 
+              <!-- СОДЕРЖИМОЕ: Аналитика -->
+              <v-window-item value="analytics">
+                <AdminAnalytics />
+              </v-window-item>
+
               <!-- СОДЕРЖИМОЕ: Уведомления -->
               <v-window-item value="notifications">
                 <AdminNotifications />
@@ -119,6 +130,7 @@ import AdminGroups from '../components/admin/AdminGroups.vue'
 import AdminStudentImport from '../components/admin/AdminStudentImport.vue'
 import AdminStudentRecovery from '../components/admin/AdminStudentRecovery.vue'
 import AdminNotifications from '../components/admin/AdminNotifications.vue'
+import AdminAnalytics from '../components/admin/AdminAnalytics.vue'
 import { clearAuthData } from '../api/authStorage'
 
 const router = useRouter()
