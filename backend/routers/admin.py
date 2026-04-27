@@ -247,9 +247,7 @@ def get_statistics(
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Получить статистику по всей школе"""
-    print(f"DEBUG: get_statistics called by admin: {current_admin.email}")
     stats = crud.get_school_statistics(db)
-    print(f"DEBUG: stats = {stats}")
     return schemas.SchoolStatistics(**stats)
 
 
