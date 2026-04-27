@@ -545,3 +545,34 @@ class Token(BaseModel):
 
 
 TeachingAssignment.model_rebuild()
+
+
+# ========== SCHEMAS ДЛЯ АНАЛИТИКИ ==========
+
+class SubjectAnalytics(BaseModel):
+    subject_id: int
+    subject_name: str
+    lesson_count: int
+    avg_grade: Optional[float]
+    attendance_rate: float
+    grade_distribution: dict
+
+
+class StudentAnalytics(BaseModel):
+    student_id: int
+    student_name: str
+    avg_grade: Optional[float]
+    attendance_rate: float
+    grade_distribution: dict
+
+
+class GroupAnalytics(BaseModel):
+    group_id: int
+    group_name: str
+    course_year: int
+    total_students: int
+    total_lessons: int
+    overall_avg_grade: Optional[float]
+    overall_attendance_rate: float
+    subjects: List[SubjectAnalytics]
+    students: List[StudentAnalytics]
