@@ -51,6 +51,22 @@ def create_group(
     return crud.create_group(db=db, group=group)
 
 
+@router.patch("/groups/{group_id}", response_model=schemas.Group)
+def update_group(
+    group_id: int,
+    data: schemas.GroupUpdate,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Обновить данные группы (только администратор)"""
+    if current_teacher.role != "admin":
+        raise HTTPException(status_code=403, detail="Требуется роль администратора")
+    updated = crud.update_group(db, group_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    return updated
+
+
 # ========== СТУДЕНТЫ ==========
 
 @router.get("/students/", response_model=List[schemas.Student])
@@ -84,14 +100,32 @@ def create_student(
     group = crud.get_group_by_id(db, group_id=student.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Группа не найдена")
-    
-    # Проверяем, что преподаватель может добавлять студентов в эту группу
-    # (группа должна быть в его списке групп)
+
     teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
     if not any(g.id == group.id for g in teacher_groups):
         raise HTTPException(status_code=403, detail="Нельзя добавлять студентов в чужую группу")
-    
+
     return crud.create_student(db=db, student=student)
+
+
+@router.patch("/students/{student_id}", response_model=schemas.Student)
+def update_student(
+    student_id: int,
+    data: schemas.StudentUpdate,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Обновить данные студента"""
+    student = crud.get_student_by_id(db, student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
+    if not any(g.id == student.group_id for g in teacher_groups):
+        raise HTTPException(status_code=403, detail="Нет доступа к этому студенту")
+    updated = crud.update_student(db, student_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    return updated
 
 
 # ========== ПРЕДМЕТЫ ==========
@@ -140,6 +174,25 @@ def create_subject(
     return crud.create_subject(db=db, subject=subject, teacher_id=current_teacher.id)
 
 
+@router.patch("/subjects/{subject_id}", response_model=schemas.Subject)
+def update_subject(
+    subject_id: int,
+    data: schemas.SubjectUpdate,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Обновить название предмета"""
+    subject = crud.get_subject_by_id(db, subject_id)
+    if subject is None or subject.is_deleted:
+        raise HTTPException(status_code=404, detail="Предмет не найден")
+    if subject.teacher_id != current_teacher.id:
+        raise HTTPException(status_code=403, detail="Нет доступа к этому предмету")
+    updated = crud.update_subject(db, subject_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Предмет не найден")
+    return updated
+
+
 # ========== УРОКИ ==========
 
 @router.get("/lessons/", response_model=List[schemas.Lesson])
@@ -181,6 +234,26 @@ def create_lesson(
         raise HTTPException(status_code=403, detail="Нельзя создавать занятия в чужой группе")
 
     return crud.create_teacher_lesson(db=db, lesson=lesson, teacher_id=current_teacher.id)
+
+
+@router.patch("/lessons/{lesson_id}", response_model=schemas.Lesson)
+def update_lesson(
+    lesson_id: int,
+    data: schemas.LessonUpdate,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Обновить тему или дату занятия"""
+    lesson = crud.get_lesson_by_id(db, lesson_id)
+    if lesson is None or lesson.is_deleted:
+        raise HTTPException(status_code=404, detail="Занятие не найдено")
+    subject = crud.get_subject_by_id(db, lesson.subject_id)
+    if subject is None or subject.teacher_id != current_teacher.id:
+        raise HTTPException(status_code=403, detail="Нет доступа к этому занятию")
+    updated = crud.update_lesson(db, lesson_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Занятие не найдено")
+    return updated
 
 
 # ========== УЧЕБНЫЕ ПЕРИОДЫ ==========
