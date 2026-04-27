@@ -19,6 +19,11 @@ class GroupBase(BaseModel):
 class GroupCreate(GroupBase):
     pass # При создании группы нам нужно только имя и курс
 
+class GroupUpdate(BaseModel):
+    group_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    course_year: Optional[int] = Field(None, ge=1, le=6)
+
+
 class Group(GroupBase):
     id: int
     class Config:
@@ -31,6 +36,11 @@ class StudentBase(BaseModel):
 
 class StudentCreate(StudentBase):
     pass
+
+class StudentUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=2, max_length=150)
+    group_id: Optional[int] = None
+
 
 class Student(StudentBase):
     id: int
@@ -99,6 +109,10 @@ class SubjectCreate(SubjectBase):
     pass
 
 
+class SubjectUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
 class Subject(SubjectBase):
     id: int
     teacher_id: int
@@ -115,6 +129,11 @@ class LessonBase(BaseModel):
 
 class LessonCreate(LessonBase):
     pass
+
+
+class LessonUpdate(BaseModel):
+    lesson_topic: Optional[str] = Field(None, max_length=255)
+    lesson_date: Optional[date] = None
 
 
 class Lesson(LessonBase):
@@ -371,7 +390,7 @@ class DailyJournal(BaseModel):
     lessons: List[JournalLesson]
 # Схемы для преподавателя
 class TeacherBase(BaseModel):
-    email: str # По-хорошему здесь используют EmailStr из pydantic[email], но пока оставим str
+    email: EmailStr
     full_name: str
 
 class TeacherCreate(TeacherBase):
@@ -498,6 +517,25 @@ class NotificationSendResponse(BaseModel):
     success: bool
     message: str
     recipients_count: int
+
+
+class ProfileUpdate(BaseModel):
+    """Обновление собственного профиля преподавателем"""
+    full_name: Optional[str] = Field(None, min_length=2, max_length=150)
+    email: Optional[EmailStr] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = Field(None, min_length=8, max_length=128)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not re.search(r'\d', v):
+            raise ValueError('Пароль должен содержать как минимум одну цифру')
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', v):
+            raise ValueError('Пароль должен содержать как минимум один специальный символ')
+        return v
 
 
 # Схема для ответа с токеном
