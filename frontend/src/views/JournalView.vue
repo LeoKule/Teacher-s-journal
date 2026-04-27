@@ -298,7 +298,6 @@ const loadJournal = async () => {
   
   loading.value = true
   
-  await new Promise(resolve => setTimeout(resolve, 1000));
   try {
     const [lRes, sRes, gRes] = await Promise.all([
       api.get(`/lessons/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}`),
