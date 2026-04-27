@@ -5,13 +5,14 @@
         Вход в журнал
       </v-card-title>
 
-      <v-form @submit.prevent="handleLogin">
+      <v-form ref="loginForm" @submit.prevent="handleLogin">
         <v-text-field
           v-model="email"
           label="Email"
           prepend-inner-icon="mdi-email-outline"
           variant="outlined"
           class="mb-2"
+          :rules="emailRules"
         ></v-text-field>
 
         <v-text-field
@@ -21,6 +22,7 @@
           prepend-inner-icon="mdi-lock-outline"
           variant="outlined"
           class="mb-4"
+          :rules="passwordRules"
         ></v-text-field>
 
         <v-checkbox
@@ -36,12 +38,13 @@
           {{ error }}
         </v-alert>
 
-        <v-btn 
-          type="submit" 
-          color="indigo-darken-2" 
-          block 
+        <v-btn
+          type="submit"
+          color="indigo-darken-2"
+          block
           size="large"
           :loading="loading"
+          :disabled="!email || !password"
         >
           Войти
         </v-btn>
@@ -51,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted} from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios' 
 import { getUserRole, hasUsableSession, storeAuthData } from '../api/authStorage'
@@ -61,7 +64,17 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const loginForm = ref(null)
 const router = useRouter()
+
+const emailRules = [
+  v => !!v || 'Введите email',
+  v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Некорректный формат email',
+]
+const passwordRules = [
+  v => !!v || 'Введите пароль',
+  v => v.length >= 8 || 'Минимум 8 символов',
+]
 
 // АВТОМАТИЧЕСКИЙ ВХОД
 onMounted(() => {
