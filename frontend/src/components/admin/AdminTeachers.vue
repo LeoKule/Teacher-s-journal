@@ -21,13 +21,14 @@
           Добавить нового преподавателя
         </v-card-title>
         <v-card-text class="pa-6">
-          <v-form @submit.prevent="createTeacher">
+          <v-form ref="createForm" @submit.prevent="createTeacher">
             <v-text-field
               v-model="newTeacher.full_name"
               label="ФИО"
               variant="outlined"
               class="mb-4"
               prepend-inner-icon="mdi-account"
+              :rules="[v => !!v || 'Обязательное поле', v => v.length >= 2 || 'Минимум 2 символа']"
             ></v-text-field>
 
             <v-text-field
@@ -37,6 +38,7 @@
               class="mb-4"
               prepend-inner-icon="mdi-email"
               type="email"
+              :rules="[v => !!v || 'Обязательное поле', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Некорректный email']"
             ></v-text-field>
 
             <v-select
@@ -200,13 +202,14 @@
            Редактировать преподавателя
         </v-card-title>
         <v-card-text class="pa-6">
-          <v-form @submit.prevent="submitEditTeacher">
+          <v-form ref="editForm" @submit.prevent="submitEditTeacher">
             <v-text-field
               v-model="editedTeacher.full_name"
               label="ФИО"
               variant="outlined"
               class="mb-4"
               prepend-inner-icon="mdi-account"
+              :rules="[v => !!v || 'Обязательное поле', v => v.length >= 2 || 'Минимум 2 символа']"
             ></v-text-field>
 
             <v-text-field
@@ -215,6 +218,7 @@
               variant="outlined"
               class="mb-4"
               prepend-inner-icon="mdi-email"
+              :rules="[v => !!v || 'Обязательное поле', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Некорректный email']"
               type="email"
             ></v-text-field>
 
