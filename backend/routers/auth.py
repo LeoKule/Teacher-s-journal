@@ -139,6 +139,46 @@ async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+@router.get("/profile", response_model=schemas.TeacherResponse)
+def get_profile(current_teacher: models.Teacher = Depends(get_current_teacher)):
+    """Получить данные своего профиля"""
+    return schemas.TeacherResponse(
+        id=current_teacher.id,
+        email=current_teacher.email,
+        full_name=current_teacher.full_name,
+        role=current_teacher.role,
+        is_active=current_teacher.is_active,
+        last_login=current_teacher.last_login.isoformat() if current_teacher.last_login else None,
+        created_at=current_teacher.created_at.isoformat(),
+        updated_at=current_teacher.updated_at.isoformat()
+    )
+
+
+@router.patch("/profile", response_model=schemas.TeacherResponse)
+def update_profile(
+    data: schemas.ProfileUpdate,
+    current_teacher: models.Teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db)
+):
+    """Обновить собственный профиль (ФИО, email, пароль)"""
+    if data.new_password and not data.current_password:
+        raise HTTPException(status_code=400, detail="Для смены пароля укажите текущий пароль")
+    teacher = crud.update_teacher_profile(db, current_teacher, data)
+    if teacher is None:
+        raise HTTPException(status_code=400, detail="Неверный текущий пароль или email уже занят")
+    logger.info(f"Profile updated for teacher: {teacher.email}")
+    return schemas.TeacherResponse(
+        id=teacher.id,
+        email=teacher.email,
+        full_name=teacher.full_name,
+        role=teacher.role,
+        is_active=teacher.is_active,
+        last_login=teacher.last_login.isoformat() if teacher.last_login else None,
+        created_at=teacher.created_at.isoformat(),
+        updated_at=teacher.updated_at.isoformat()
+    )
+
+
 @router.post("/logout")
 async def logout(
     response: Response,
