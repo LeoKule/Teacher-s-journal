@@ -8,15 +8,19 @@
           <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
         </v-btn>
 
-        <v-btn 
-          icon 
-          variant="text" 
-          color="success" 
-          @click="exportToExcel" 
+        <v-btn
+          icon
+          variant="text"
+          color="success"
+          @click="exportToExcel"
           title="Экспорт в Excel"
           class="mr-2"
         >
           <v-icon>mdi-file-excel</v-icon>
+        </v-btn>
+
+        <v-btn icon variant="text" @click="openProfileDialog" title="Мой профиль" class="mr-1">
+          <v-icon>mdi-account-circle</v-icon>
         </v-btn>
 
         <v-btn color="error" variant="tonal" @click="logout" prepend-icon="mdi-logout">
@@ -183,6 +187,53 @@
         <v-btn variant="text" @click="snackbar.show = false">Закрыть</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Диалог профиля -->
+    <v-dialog v-model="profileDialog" max-width="480px">
+      <v-card class="rounded-xl pa-2">
+        <v-card-title class="text-h5 text-center pt-4">Мой профиль</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="profileForm.full_name"
+            label="ФИО"
+            variant="outlined"
+            class="mb-2"
+            prepend-inner-icon="mdi-account"
+          ></v-text-field>
+          <v-text-field
+            v-model="profileForm.email"
+            label="Email"
+            variant="outlined"
+            class="mb-2"
+            prepend-inner-icon="mdi-email"
+          ></v-text-field>
+          <v-divider class="my-3"></v-divider>
+          <div class="text-caption text-medium-emphasis mb-2">Смена пароля (необязательно)</div>
+          <v-text-field
+            v-model="profileForm.current_password"
+            label="Текущий пароль"
+            type="password"
+            variant="outlined"
+            class="mb-2"
+            prepend-inner-icon="mdi-lock"
+          ></v-text-field>
+          <v-text-field
+            v-model="profileForm.new_password"
+            label="Новый пароль"
+            type="password"
+            variant="outlined"
+            prepend-inner-icon="mdi-lock-reset"
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions class="pb-4 px-4">
+          <v-btn color="grey-darken-1" variant="text" @click="profileDialog = false">Отмена</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn color="indigo-darken-2" variant="elevated" min-width="120" :loading="profileSaving" @click="saveProfile">
+            Сохранить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -231,6 +282,47 @@ const newComment = ref('')
 const snackbar = ref({ show: false, text: '', color: 'success' })
 const showMsg = (text, color = 'success') => {
   snackbar.value = { show: true, text, color }
+}
+
+// ===== ПРОФИЛЬ =====
+const profileDialog = ref(false)
+const profileSaving = ref(false)
+const profileForm = ref({ full_name: '', email: '', current_password: '', new_password: '' })
+
+const openProfileDialog = async () => {
+  try {
+    const res = await api.get('/profile')
+    profileForm.value = {
+      full_name: res.data.full_name,
+      email: res.data.email,
+      current_password: '',
+      new_password: '',
+    }
+    profileDialog.value = true
+  } catch (e) {
+    showMsg('Не удалось загрузить профиль', 'error')
+  }
+}
+
+const saveProfile = async () => {
+  profileSaving.value = true
+  try {
+    const payload = {}
+    if (profileForm.value.full_name) payload.full_name = profileForm.value.full_name
+    if (profileForm.value.email) payload.email = profileForm.value.email
+    if (profileForm.value.new_password) {
+      payload.current_password = profileForm.value.current_password
+      payload.new_password = profileForm.value.new_password
+    }
+    await api.patch('/profile', payload)
+    showMsg('Профиль обновлён', 'success')
+    profileDialog.value = false
+  } catch (e) {
+    const detail = e.response?.data?.detail
+    showMsg(typeof detail === 'string' ? detail : 'Ошибка сохранения', 'error')
+  } finally {
+    profileSaving.value = false
+  }
 }
 
 // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
