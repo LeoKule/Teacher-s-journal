@@ -20,6 +20,10 @@ const routes = [
     name: 'Admin',
     component: AdminView,
     meta: { requiresAdmin: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 
