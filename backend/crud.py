@@ -61,14 +61,30 @@ def create_student(db: Session, student: schemas.StudentCreate):
     return db_student
 
 
-def get_students(db: Session, group_id: int | None = None):
+def get_students(db: Session, group_id: int | None = None, skip: int = 0, limit: int | None = None):
     query = db.query(models.Student).filter(models.Student.is_deleted == False)
     if group_id is not None:
         query = query.filter(models.Student.group_id == group_id)
-    return query.order_by(models.Student.full_name).all()
+    query = query.order_by(models.Student.full_name).offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 
-def get_students_for_teacher(db: Session, teacher_id: int, group_id: int | None = None):
+def count_students(db: Session, group_id: int | None = None) -> int:
+    query = db.query(models.Student).filter(models.Student.is_deleted == False)
+    if group_id is not None:
+        query = query.filter(models.Student.group_id == group_id)
+    return query.count()
+
+
+def get_students_for_teacher(
+    db: Session,
+    teacher_id: int,
+    group_id: int | None = None,
+    skip: int = 0,
+    limit: int | None = None,
+):
     """Получить студентов только из групп, где преподаватель ведет занятия"""
     query = (
         db.query(models.Student)
@@ -80,11 +96,12 @@ def get_students_for_teacher(db: Session, teacher_id: int, group_id: int | None 
             models.Student.is_deleted == False
         )
     )
-    
     if group_id is not None:
         query = query.filter(models.Student.group_id == group_id)
-    
-    return query.order_by(models.Student.full_name).all()
+    query = query.order_by(models.Student.full_name).offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 
 def get_student_by_id(db: Session, student_id: int):
@@ -1278,3 +1295,108 @@ def promote_groups_to_next_year(db: Session, group_ids: list[int]):
         failed.append(f"Ошибка при сохранении: {str(e)}")
     
     return promoted, failed
+
+
+# ========== АНАЛИТИКА ==========
+
+def get_group_analytics(db: Session, group_id: int) -> dict:
+    from collections import defaultdict
+
+    group = db.query(models.StudentGroup).filter(models.StudentGroup.id == group_id).first()
+    if not group:
+        return None
+
+    students = db.query(models.Student).filter(
+        models.Student.group_id == group_id,
+        models.Student.is_deleted == False
+    ).all()
+
+    lessons = db.query(models.Lesson).filter(
+        models.Lesson.group_id == group_id,
+        models.Lesson.is_deleted == False
+    ).options(joinedload(models.Lesson.subject)).all()
+
+    lesson_ids = [l.id for l in lessons]
+    grade_records = (
+        db.query(models.GradeRecord)
+        .filter(
+            models.GradeRecord.lesson_id.in_(lesson_ids),
+            models.GradeRecord.is_deleted == False
+        ).all()
+    ) if lesson_ids else []
+
+    grades_map = {(gr.student_id, gr.lesson_id): gr for gr in grade_records}
+
+    lessons_by_subject = defaultdict(list)
+    subjects_info = {}
+    for lesson in lessons:
+        lessons_by_subject[lesson.subject_id].append(lesson)
+        subjects_info[lesson.subject_id] = lesson.subject
+
+    def _calc_avg(grade_list):
+        return round(sum(grade_list) / len(grade_list), 2) if grade_list else None
+
+    subjects_analytics = []
+    for subject_id, subj_lessons in lessons_by_subject.items():
+        numeric_grades = []
+        present_count = 0
+        grade_dist = {'2': 0, '3': 0, '4': 0, '5': 0, 'Н': 0}
+        for lesson in subj_lessons:
+            for student in students:
+                gr = grades_map.get((student.id, lesson.id))
+                if gr and gr.grade_value:
+                    gv = str(gr.grade_value)
+                    if gv in grade_dist:
+                        grade_dist[gv] += 1
+                    if gv != 'Н':
+                        numeric_grades.append(int(gv))
+                        present_count += 1
+        total_slots = len(subj_lessons) * len(students)
+        subjects_analytics.append({
+            'subject_id': subject_id,
+            'subject_name': subjects_info[subject_id].name,
+            'lesson_count': len(subj_lessons),
+            'avg_grade': _calc_avg(numeric_grades),
+            'attendance_rate': round(present_count / total_slots * 100, 1) if total_slots else 0.0,
+            'grade_distribution': grade_dist,
+        })
+
+    students_analytics = []
+    for student in students:
+        numeric_grades = []
+        present_count = 0
+        grade_dist = {'2': 0, '3': 0, '4': 0, '5': 0, 'Н': 0}
+        for lesson in lessons:
+            gr = grades_map.get((student.id, lesson.id))
+            if gr and gr.grade_value:
+                gv = str(gr.grade_value)
+                if gv in grade_dist:
+                    grade_dist[gv] += 1
+                if gv != 'Н':
+                    numeric_grades.append(int(gv))
+                    present_count += 1
+        total_slots = len(lessons)
+        students_analytics.append({
+            'student_id': student.id,
+            'student_name': student.full_name,
+            'avg_grade': _calc_avg(numeric_grades),
+            'attendance_rate': round(present_count / total_slots * 100, 1) if total_slots else 0.0,
+            'grade_distribution': grade_dist,
+        })
+
+    all_numeric = [int(gr.grade_value) for gr in grade_records
+                   if gr.grade_value and gr.grade_value != 'Н']
+    total_slots = len(lessons) * len(students)
+    overall_attendance = round(len(all_numeric) / total_slots * 100, 1) if total_slots else 0.0
+
+    return {
+        'group_id': group_id,
+        'group_name': group.group_name,
+        'course_year': group.course_year,
+        'total_students': len(students),
+        'total_lessons': len(lessons),
+        'overall_avg_grade': _calc_avg(all_numeric),
+        'overall_attendance_rate': overall_attendance,
+        'subjects': subjects_analytics,
+        'students': students_analytics,
+    }
