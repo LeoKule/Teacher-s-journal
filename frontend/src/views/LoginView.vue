@@ -94,23 +94,7 @@ const handleLogin = async () => {
 
     // ЛОГИКА "ЗАПОМНИТЬ МЕНЯ"
     storeAuthData(response.data, rememberMe.value)
-    const storage = { setItem: () => {} }
-    const otherStorage = { removeItem: () => {} }
 
-    // Сохраняем токен и информацию о пользователе
-    storage.setItem('access_token', access_token)
-    storage.setItem('user_role', user_role)
-    storage.setItem('user_id', user_id)
-    storage.setItem('full_name', full_name)
-    storage.setItem('email', userEmail)
-
-    // Чистим противоположное хранилище
-    otherStorage.removeItem('access_token')
-    otherStorage.removeItem('user_role')
-    otherStorage.removeItem('user_id')
-    otherStorage.removeItem('full_name')
-    otherStorage.removeItem('email')
-    
     // Перенаправляем в зависимости от роли пользователя
     if (user_role === 'admin') {
       router.push('/admin')
