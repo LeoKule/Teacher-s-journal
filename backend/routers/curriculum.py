@@ -72,22 +72,20 @@ def update_group(
 @router.get("/students/", response_model=List[schemas.Student])
 def read_students(
     group_id: int | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=500),
     db: Session = Depends(get_db),
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
     """Получить студентов из групп, где преподаватель ведет занятия"""
-    # Если конкретно указана группа, проверяем доступ преподавателя к ней
     if group_id is not None:
         group = crud.get_group_by_id(db, group_id=group_id)
         if group is None:
             raise HTTPException(status_code=404, detail="Группа не найдена")
-        
-        # Проверяем, что преподаватель может видеть студентов в этой группе
         teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
         if not any(g.id == group.id for g in teacher_groups):
             raise HTTPException(status_code=403, detail="Нет доступа к этой группе")
-    
-    return crud.get_students_for_teacher(db=db, teacher_id=current_teacher.id, group_id=group_id)
+    return crud.get_students_for_teacher(db=db, teacher_id=current_teacher.id, group_id=group_id, skip=skip, limit=limit)
 
 
 @router.post("/students/", response_model=schemas.Student)
