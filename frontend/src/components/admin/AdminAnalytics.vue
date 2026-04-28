@@ -64,7 +64,7 @@
         <v-col cols="12" md="7">
           <v-card elevation="1" rounded="lg" class="pa-4">
             <div class="font-weight-medium mb-3">Средний балл по предметам</div>
-            <Bar v-if="subjectChartData" :data="subjectChartData" :options="barOptions" style="max-height: 260px;" />
+            <Bar v-if="subjectChartData" :key="chartKey" :data="subjectChartData" :options="barOptions" style="max-height: 260px;" />
             <v-alert v-else type="info" variant="tonal" density="compact">Нет данных об оценках</v-alert>
           </v-card>
         </v-col>
@@ -73,7 +73,7 @@
         <v-col cols="12" md="5">
           <v-card elevation="1" rounded="lg" class="pa-4">
             <div class="font-weight-medium mb-3">Распределение оценок</div>
-            <Doughnut v-if="gradeDistChartData" :data="gradeDistChartData" :options="doughnutOptions" style="max-height: 260px;" />
+            <Doughnut v-if="gradeDistChartData" :key="chartKey" :data="gradeDistChartData" :options="doughnutOptions" style="max-height: 260px;" />
             <v-alert v-else type="info" variant="tonal" density="compact">Нет данных об оценках</v-alert>
           </v-card>
         </v-col>
@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { Bar, Doughnut } from 'vue-chartjs'
 import {
@@ -139,6 +139,8 @@ const groups = ref([])
 const selectedGroupId = ref(null)
 const analytics = ref(null)
 const loading = ref(false)
+const chartKey = ref(0)
+watch(theme.current, () => { chartKey.value++ })
 
 onMounted(async () => {
   try {
