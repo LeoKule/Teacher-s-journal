@@ -76,9 +76,10 @@
         class="mb-4"
       >
         <v-card class="rounded-lg" elevation="1">
-          <v-card-title class="bg-surface-variant">
-             {{ course.year }} курс ({{ course.groups.length }} {{ pluralize(course.groups.length, 'группа') }})
+          <v-card-title class="font-weight-bold">
+            {{ course.year }} курс ({{ course.groups.length }} {{ pluralize(course.groups.length, 'группа', 'группы', 'групп') }})
           </v-card-title>
+          <v-divider></v-divider>
           <v-card-text class="pa-4">
             <v-row>
               <v-col 
@@ -88,15 +89,15 @@
                 sm="6"
                 md="4"
               >
-                <v-card 
+                <v-card
                   class="rounded-lg cursor-pointer transition-all"
-                  :class="{ 'border-primary border-opacity-100': selectedGroupsForPromotion.includes(group.id) }"
-                  :border="selectedGroupsForPromotion.includes(group.id) ? 'primary sm' : false"
+                  variant="outlined"
+                  :color="selectedGroupsForPromotion.includes(group.id) ? 'primary' : undefined"
                   @click="toggleGroupSelection(group.id)"
                 >
                   <v-card-text class="pa-4">
                     <div class="text-h6 font-weight-bold">{{ group.group_name }}</div>
-                    <div class="text-body-2 text-medium-emphasis mt-2">
+                    <div class="text-body-2 mt-2">
                        {{ group.course_year }} курс
                     </div>
                     <v-checkbox
@@ -144,10 +145,10 @@ const showPromotionDialog = ref(false)
 const promotionLoading = ref(false)
 const selectedGroupsForPromotion = ref([])
 
-const pluralize = (count, word) => {
-  if (count % 10 === 1 && count % 100 !== 11) return word
-  if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return word + 'ы'
-  return word + ''
+const pluralize = (count, one, few, many) => {
+  if (count % 10 === 1 && count % 100 !== 11) return one
+  if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return few
+  return many
 }
 
 const availableGroups = computed(() => {

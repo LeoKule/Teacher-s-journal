@@ -39,9 +39,9 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-btn 
-          color="indigo-darken-2" 
-          block 
+        <v-btn
+          color="primary"
+          block
           @click="loadLogs"
           :loading="loading"
         >
@@ -56,7 +56,7 @@
     <div v-if="!loading" class="rounded-lg overflow-hidden border">
       <v-table dense hover>
         <thead>
-          <tr class="bg-surface-variant">
+          <tr>
             <th class="text-left">Дата/Время</th>
             <th class="text-left">Администратор</th>
             <th class="text-left">Действие</th>
@@ -70,12 +70,12 @@
             <td class="text-body-2">{{ formatDate(log.created_at) }}</td>
             <td class="text-body-2">
               <span v-if="log.admin_id">Admin #{{ log.admin_id }}</span>
-              <span v-else class="text-grey-darken-2">Система</span>
+              <span v-else class="text-medium-emphasis">Система</span>
             </td>
             <td>
-              <v-chip 
-                :color="getActionColor(log.action)" 
-                text-color="white"
+              <v-chip
+                :color="getActionColor(log.action)"
+                variant="tonal"
                 size="small"
               >
                 {{ formatAction(log.action) }}
@@ -86,7 +86,7 @@
             <td class="text-body-2">{{ log.description || '-' }}</td>
           </tr>
           <tr v-if="filteredLogs.length === 0">
-            <td colspan="6" class="text-center py-4 text-grey-darken-2">
+            <td colspan="6" class="text-center py-4 text-medium-emphasis">
               Логи не найдены
             </td>
           </tr>
@@ -225,5 +225,11 @@ onMounted(() => {
 <style scoped>
 .log-row:hover {
   background-color: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Vuetify 3 v-table hardcodes rgba(0,0,0,.6) for th — overriding for dark theme */
+:deep(.v-table thead th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  background-color: rgb(var(--v-theme-surface-variant)) !important;
 }
 </style>

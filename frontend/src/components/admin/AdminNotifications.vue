@@ -24,23 +24,15 @@
               <label class="text-body-2 font-weight-bold d-block mb-3">
                  Получатели:
               </label>
-              <div class="border rounded-lg pa-4 bg-surface-variant">
+              <v-sheet border rounded="lg" class="pa-4">
                 <v-checkbox
-                  v-if="form.recipients.length === 0"
                   v-model="selectAllTeachers"
                   label="Все преподаватели"
                   @update:model-value="toggleSelectAll"
                   class="mb-3"
+                  hide-details
                 ></v-checkbox>
-                <template v-else>
-                  <v-checkbox
-                    v-model="selectAllTeachers"
-                    label="Все преподаватели"
-                    @update:model-value="toggleSelectAll"
-                    class="mb-3"
-                  ></v-checkbox>
-                </template>
-                
+
                 <div v-if="!selectAllTeachers" class="ml-6">
                   <v-checkbox
                     v-for="teacher in availableTeachers"
@@ -49,9 +41,10 @@
                     :value="teacher.id"
                     :label="`${teacher.full_name} (${teacher.email})`"
                     class="mb-2"
+                    hide-details
                   ></v-checkbox>
                 </div>
-              </div>
+              </v-sheet>
             </div>
 
             <!-- Заголовок уведомления -->
@@ -116,14 +109,14 @@
             </div>
             <div v-if="form.recipients.length > 0 || selectAllTeachers" class="mt-4 pt-4 border-t">
               <label class="text-body-2 font-weight-bold d-block mb-2">Получатели:</label>
-              <div v-if="selectAllTeachers" class="text-body-2 text-grey-darken-1">
+              <div v-if="selectAllTeachers" class="text-body-2 text-medium-emphasis">
                  Все {{ availableTeachers.length }} преподавателей
               </div>
-              <div v-else class="text-body-2 text-grey-darken-1">
+              <div v-else class="text-body-2 text-medium-emphasis">
                  {{ form.recipients.length }} получателей выбрано
               </div>
             </div>
-            <div v-else class="text-body-2 text-orange-darken-2">
+            <div v-else class="text-body-2 text-warning">
                Получатели не выбраны
             </div>
           </v-card-text>
@@ -181,13 +174,6 @@ const form = ref({
   message: ''
 })
 
-const typeDescriptions = {
-  announcement: 'Важное объявление для всех преподавателей',
-  reminder: 'Напоминание о важном дедлайне или событии',
-  completion: 'Уведомление об успешном завершении операции',
-  technical: 'Техническое уведомление системы',
-  other: 'Прочее'
-}
 
 const isFormValid = computed(() => {
   return form.value.title.trim().length > 0 &&
@@ -240,7 +226,7 @@ const sendNotification = async () => {
       ? availableTeachers.value.map(t => t.id)
       : form.value.recipients
 
-    const response = await api.post('/admin/notifications/send', {
+    await api.post('/admin/notifications/send', {
       notification_type: form.value.notificationType,
       title: form.value.title,
       message: form.value.message,

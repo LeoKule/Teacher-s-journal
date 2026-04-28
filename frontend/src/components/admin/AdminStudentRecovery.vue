@@ -34,8 +34,9 @@
     >
       <template #item.actions="{ item }">
         <v-btn
-          color="green-darken-2"
+          color="success"
           size="small"
+          variant="tonal"
           @click="restoreStudent(item.id)"
           :loading="restoring === item.id"
         >
@@ -48,15 +49,16 @@
     <!-- Диалог подтверждения -->
     <v-dialog v-model="showConfirmDialog" width="400">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-orange-darken-2 text-white">
-           Подтверждение восстановления
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Подтверждение восстановления
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <p class="mb-4">
             Вы действительно хотите восстановить студента 
             <strong>{{ selectedStudent?.full_name }}</strong>?
           </p>
-          <p class="text-body-2 text-grey-darken-1">
+          <p class="text-body-2 text-medium-emphasis">
             Все данные студента будут восстановлены и станут видны в системе.
           </p>
         </v-card-text>
@@ -66,7 +68,7 @@
           </v-btn>
           <v-spacer></v-spacer>
           <v-btn
-            color="green-darken-2"
+            color="success"
             @click="confirmRestore"
             :loading="restoring > 0"
           >
