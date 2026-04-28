@@ -4,8 +4,8 @@
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between">
         <h6 class="admin-section-title text-h6 font-weight-bold"> Управление преподавателями</h6>
-        <v-btn 
-          color="indigo-darken-2" 
+        <v-btn
+          color="primary"
           prepend-icon="mdi-plus"
           @click="showCreateDialog = true"
         >
@@ -17,9 +17,10 @@
     <!-- Диалог создания преподавателя -->
     <v-dialog v-model="showCreateDialog" width="500">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-indigo-darken-2 text-white">
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
           Добавить нового преподавателя
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-form ref="createForm" @submit.prevent="createTeacher">
             <v-text-field
@@ -54,10 +55,10 @@
                После создания будет сгенерирован временный пароль
             </v-alert>
 
-            <v-btn 
-              type="submit" 
-              color="indigo-darken-2" 
-              block 
+            <v-btn
+              type="submit"
+              color="primary"
+              block
               size="large"
               :loading="createLoading"
             >
@@ -71,9 +72,10 @@
     <!-- Диалог с сгенерированным паролем -->
     <v-dialog v-model="showPasswordDialog" width="500">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-green-darken-2 text-white">
-          ✅ Преподаватель создан
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Преподаватель создан
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-alert type="warning" variant="tonal" class="mb-4">
              Сохраните и сообщите временный пароль преподавателю!
@@ -99,9 +101,9 @@
             ></v-text-field>
           </div>
 
-          <v-btn 
-            color="indigo-darken-2" 
-            block 
+          <v-btn
+            color="primary"
+            block
             size="large"
             @click="showPasswordDialog = false; loadTeachers()"
           >
@@ -134,22 +136,22 @@
       class="rounded-lg"
     >
       <template #item.is_active="{ item }">
-        <v-chip 
-          :color="item.is_active ? 'green' : 'red'" 
-          text-color="white"
+        <v-chip
+          :color="item.is_active ? 'success' : 'error'"
+          variant="tonal"
           size="small"
         >
-          {{ item.is_active ? ' Активен' : ' Заблокирован' }}
+          {{ item.is_active ? 'Активен' : 'Заблокирован' }}
         </v-chip>
       </template>
 
       <template #item.role="{ item }">
-        <v-chip 
-          :color="item.role === 'admin' ? 'indigo-darken-2' : 'blue'" 
-          text-color="white"
+        <v-chip
+          :color="item.role === 'admin' ? 'indigo' : 'blue'"
+          variant="tonal"
           size="small"
         >
-          {{ item.role === 'admin' ? ' Администратор' : ' Преподаватель' }}
+          {{ item.role === 'admin' ? 'Администратор' : 'Преподаватель' }}
         </v-chip>
       </template>
 
@@ -198,9 +200,10 @@
     <!-- Диалог редактирования преподавателя -->
     <v-dialog v-model="showEditDialog" width="500">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-indigo-darken-2 text-white">
-           Редактировать преподавателя
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Редактировать преподавателя
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-form ref="editForm" @submit.prevent="submitEditTeacher">
             <v-text-field
@@ -237,7 +240,7 @@
               </v-btn>
               <v-btn
                 type="submit"
-                color="indigo-darken-2"
+                color="primary"
                 class="flex-grow-1"
                 :loading="editLoading"
               >
@@ -252,9 +255,10 @@
     <!-- Диалог сброса пароля -->
     <v-dialog v-model="showResetPasswordDialog" width="500">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-orange-darken-2 text-white">
-           Сброс пароля
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Сброс пароля
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-text-field
             v-model="newPassword"
@@ -266,9 +270,9 @@
             prepend-inner-icon="mdi-lock"
           ></v-text-field>
 
-          <v-btn 
-            color="orange-darken-2" 
-            block 
+          <v-btn
+            color="warning"
+            block
             size="large"
             :loading="resetLoading"
             @click="resetPassword"

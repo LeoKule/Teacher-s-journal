@@ -13,13 +13,13 @@
     <!-- Drag & Drop зона -->
     <v-card
       class="mb-6 pa-8 text-center cursor-pointer border-2 rounded-lg"
-      :class="dragover ? 'bg-blue-lighten-5 border-blue' : 'border-dashed border-grey'"
+      :class="dragover ? 'bg-primary-lighten-5 border-primary' : 'border-dashed border-grey'"
       @dragover.prevent="dragover = true"
       @dragleave="dragover = false"
       @drop.prevent="handleFileDrop"
       elevation="0"
     >
-      <v-icon size="64" color="blue-darken-2" class="mb-4">mdi-cloud-upload</v-icon>
+      <v-icon size="64" color="primary" class="mb-4">mdi-cloud-upload</v-icon>
       <h5 class="text-h5 mb-2">Перетащите CSV файл сюда</h5>
       <p class="text-body-2 text-grey-darken-1">или нажмите для выбора файла</p>
       
@@ -32,7 +32,7 @@
       />
       
       <v-btn
-        color="blue-darken-2"
+        color="primary"
         variant="outlined"
         class="mt-4"
         @click="$refs.fileInput.click()"
@@ -112,7 +112,7 @@
     <v-row v-if="previewData.length > 0" class="mb-6">
       <v-col cols="12" class="d-flex gap-2">
         <v-btn
-          color="blue-darken-2"
+          color="primary"
           size="large"
           @click="performImport"
           :loading="importing"

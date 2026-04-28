@@ -24,7 +24,7 @@
               <label class="text-body-2 font-weight-bold d-block mb-3">
                  Получатели:
               </label>
-              <div class="border rounded-lg pa-4" style="background: rgba(0,0,0,0.02)">
+              <div class="border rounded-lg pa-4 bg-surface-variant">
                 <v-checkbox
                   v-if="form.recipients.length === 0"
                   v-model="selectAllTeachers"
@@ -87,7 +87,7 @@
               </v-col>
               <v-col cols="6">
                 <v-btn
-                  color="blue-darken-2"
+                  color="primary"
                   block
                   @click="sendNotification"
                   :loading="sending"
@@ -111,7 +111,7 @@
             <div v-if="form.title" class="mb-4">
               <div class="text-h6 font-weight-bold">{{ form.title }}</div>
             </div>
-            <div v-if="form.message" class="text-body-2 mb-4 pa-3 rounded-lg" style="background: rgba(0,0,0,0.05)">
+            <div v-if="form.message" class="text-body-2 mb-4 pa-3 rounded-lg bg-surface-variant">
               {{ form.message }}
             </div>
             <div v-if="form.recipients.length > 0 || selectAllTeachers" class="mt-4 pt-4 border-t">
@@ -142,7 +142,7 @@
         </v-alert>
 
         <!-- Инструкции -->
-        <v-card v-if="!sendResult" class="rounded-lg" elevation="1" style="background: rgba(0,0,0,0.02)">
+        <v-card v-if="!sendResult" class="rounded-lg" elevation="0" variant="tonal" color="info">
           <v-card-text class="pa-4 text-body-2">
             <strong> Информация:</strong>
             <ul class="pl-4 mt-2">

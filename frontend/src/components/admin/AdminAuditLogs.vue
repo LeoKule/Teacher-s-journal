@@ -56,7 +56,7 @@
     <div v-if="!loading" class="rounded-lg overflow-hidden border">
       <v-table dense hover>
         <thead>
-          <tr class="bg-indigo-lighten-4">
+          <tr class="bg-surface-variant">
             <th class="text-left">Дата/Время</th>
             <th class="text-left">Администратор</th>
             <th class="text-left">Действие</th>
@@ -224,6 +224,6 @@ onMounted(() => {
 
 <style scoped>
 .log-row:hover {
-  background-color: #f5f5f5;
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
 }
 </style>

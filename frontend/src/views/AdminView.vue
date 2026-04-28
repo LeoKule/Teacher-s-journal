@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar color="indigo-darken-2" dark class="mb-4">
+  <v-app-bar color="primary" dark class="mb-4">
     <v-toolbar-title class="ml-4">
        Панель администратора
     </v-toolbar-title>
@@ -19,7 +19,7 @@
     <v-row>
       <v-col cols="12">
         <v-card elevation="2" class="rounded-lg">
-          <v-tabs v-model="activeTab" color="indigo-darken-2">
+          <v-tabs v-model="activeTab" color="primary">
             <!-- Вкладка: Статистика -->
             <v-tab value="statistics">
               <v-icon start>mdi-chart-bar</v-icon>
