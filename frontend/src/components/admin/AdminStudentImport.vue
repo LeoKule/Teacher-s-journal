@@ -21,7 +21,7 @@
     >
       <v-icon size="64" color="primary" class="mb-4">mdi-cloud-upload</v-icon>
       <h5 class="text-h5 mb-2">Перетащите CSV файл сюда</h5>
-      <p class="text-body-2 text-grey-darken-1">или нажмите для выбора файла</p>
+      <p class="text-body-2 text-medium-emphasis">или нажмите для выбора файла</p>
       
       <input
         ref="fileInput"
@@ -66,7 +66,7 @@
             <v-chip
               v-if="item.status === 'ok'"
               color="green"
-              text-color="white"
+              variant="tonal"
               size="small"
             >
               ✓ OK
@@ -74,7 +74,7 @@
             <v-chip
               v-else
               color="red"
-              text-color="white"
+              variant="tonal"
               size="small"
             >
               ✗ Ошибка

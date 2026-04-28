@@ -136,7 +136,7 @@
         <v-card-title class="text-h5 text-center pt-4">Оценка и отзыв</v-card-title>
         
         <v-card-text>
-          <div class="mb-5 text-center grey--text">
+          <div class="mb-5 text-center text-medium-emphasis">
             <v-chip color="indigo" variant="outlined" size="small" class="mr-2">
               {{ selectedStudent?.full_name }}
             </v-chip>
@@ -169,7 +169,7 @@
           <v-btn color="grey-darken-1" variant="text" @click="dialog = false">Отмена</v-btn>
           <v-spacer></v-spacer>
           <v-btn 
-            color="indigo-darken-2" 
+            color="primary" 
             variant="elevated" 
             min-width="120"
             :loading="saving" 
@@ -228,7 +228,7 @@
         <v-card-actions class="pb-4 px-4">
           <v-btn color="grey-darken-1" variant="text" @click="profileDialog = false">Отмена</v-btn>
           <v-spacer></v-spacer>
-          <v-btn color="indigo-darken-2" variant="elevated" min-width="120" :loading="profileSaving" @click="saveProfile">
+          <v-btn color="primary" variant="elevated" min-width="120" :loading="profileSaving" @click="saveProfile">
             Сохранить
           </v-btn>
         </v-card-actions>
@@ -247,11 +247,11 @@ import api from '../api/axios'
 // ===== КОНСТАНТЫ =====
 const GRADE_OPTIONS = [2, 3, 4, 5, 'Н']
 const GRADE_CONFIG = {
-  'Н': { color: 'grey-darken-3', label: 'Отсутствие' },
-  2: { color: 'red-darken-1', label: 'Неудовлетворительно' },
-  3: { color: 'orange-darken-2', label: 'Удовлетворительно' },
-  4: { color: 'green-darken-1', label: 'Хорошо' },
-  5: { color: 'green-darken-1', label: 'Отлично' }
+  'Н': { color: 'grey', label: 'Отсутствие' },
+  2: { color: 'error', label: 'Неудовлетворительно' },
+  3: { color: 'warning', label: 'Удовлетворительно' },
+  4: { color: 'success', label: 'Хорошо' },
+  5: { color: 'success', label: 'Отлично' }
 }
 
 const router = useRouter()
@@ -415,8 +415,8 @@ const getGrade = (studentId, lessonId) => getGradeRecord(studentId, lessonId)?.g
 const getComment = (studentId, lessonId) => getGradeRecord(studentId, lessonId)?.comment || null
 
 const getGradeColor = (val) => {
-  if (!val) return 'blue-lighten-2'
-  return GRADE_CONFIG[val]?.color || 'blue-lighten-2'
+  if (!val) return 'primary'
+  return GRADE_CONFIG[val]?.color || 'primary'
 }
 
 const openEditDialog = (student, lesson) => {
@@ -588,7 +588,11 @@ thead th.sticky-column {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(to right, rgba(0,0,0,0.05), transparent);
+  background: linear-gradient(to right, rgba(var(--v-theme-on-surface), 0.05), transparent);
   pointer-events: none;
+}
+
+:deep(.journal-table .v-table__wrapper thead th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
 }
 </style>
