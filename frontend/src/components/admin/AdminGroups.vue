@@ -212,7 +212,7 @@ const promoteGroups = async () => {
       group_ids: selectedGroupsForPromotion.value
     })
     
-    success.value = ` Переведено ${response.data.promoted_count} гру${response.data.promoted_count === 1 ? 'пп' : 'пп'}. ${response.data.failed_count > 0 ? `Ошибок: ${response.data.failed_count}` : ''}`
+    success.value = ` Переведено ${response.data.promoted_count} ${pluralize(response.data.promoted_count, 'группу', 'группы', 'групп')}. ${response.data.failed_count > 0 ? `Ошибок: ${response.data.failed_count}` : ''}`
     showPromotionDialog.value = false
     selectedGroupsForPromotion.value = []
     
