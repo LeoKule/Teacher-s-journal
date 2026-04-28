@@ -108,6 +108,10 @@
       </div>
     </v-alert>
 
+    <v-alert v-if="fileError" type="error" variant="tonal" class="mb-4" closable @click:close="fileError = ''">
+      {{ fileError }}
+    </v-alert>
+
     <!-- Кнопки действия -->
     <v-row v-if="previewData.length > 0" class="mb-6">
       <v-col cols="12" class="d-flex gap-2">
@@ -145,6 +149,7 @@ const dryRun = ref(false)
 const importing = ref(false)
 const previewData = ref([])
 const importResult = ref(null)
+const fileError = ref('')
 
 const previewHeaders = [
   { title: 'Фамилия', key: 'last_name' },
@@ -158,18 +163,20 @@ const handleFileDrop = (e) => {
   dragover.value = false
   const file = e.dataTransfer.files[0]
   if (file && file.type === 'text/csv') {
+    fileError.value = ''
     parseCSV(file)
   } else {
-    alert('Пожалуйста, выберите CSV файл')
+    fileError.value = 'Пожалуйста, выберите CSV файл'
   }
 }
 
 const handleFileSelect = (e) => {
   const file = e.target.files[0]
   if (file && file.type === 'text/csv') {
+    fileError.value = ''
     parseCSV(file)
   } else {
-    alert('Пожалуйста, выберите CSV файл')
+    fileError.value = 'Пожалуйста, выберите CSV файл'
   }
 }
 
