@@ -19,7 +19,7 @@
       </v-col>
     </v-row>
 
-    <v-progress-linear v-if="loading" indeterminate color="indigo-darken-2" class="mb-4"></v-progress-linear>
+    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4"></v-progress-linear>
 
     <v-alert v-if="!selectedGroupId && !loading" type="info" variant="tonal" class="mb-4">
       Выберите группу для просмотра аналитики
@@ -29,28 +29,28 @@
       <!-- Сводка -->
       <v-row class="mb-4">
         <v-col cols="6" sm="3">
-          <v-card class="text-center pa-3" color="indigo-lighten-5" elevation="0" rounded="lg">
-            <div class="text-h4 font-weight-bold text-indigo-darken-2">{{ analytics.total_students }}</div>
+          <v-card class="text-center pa-3" color="indigo" variant="tonal" elevation="0" rounded="lg">
+            <div class="text-h4 font-weight-bold">{{ analytics.total_students }}</div>
             <div class="text-caption text-medium-emphasis">Студентов</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
-          <v-card class="text-center pa-3" color="green-lighten-5" elevation="0" rounded="lg">
-            <div class="text-h4 font-weight-bold text-green-darken-2">{{ analytics.total_lessons }}</div>
+          <v-card class="text-center pa-3" color="green" variant="tonal" elevation="0" rounded="lg">
+            <div class="text-h4 font-weight-bold">{{ analytics.total_lessons }}</div>
             <div class="text-caption text-medium-emphasis">Занятий</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
-          <v-card class="text-center pa-3" color="amber-lighten-5" elevation="0" rounded="lg">
-            <div class="text-h4 font-weight-bold text-amber-darken-3">
+          <v-card class="text-center pa-3" color="amber" variant="tonal" elevation="0" rounded="lg">
+            <div class="text-h4 font-weight-bold">
               {{ analytics.overall_avg_grade ?? '—' }}
             </div>
             <div class="text-caption text-medium-emphasis">Средний балл</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
-          <v-card class="text-center pa-3" color="blue-lighten-5" elevation="0" rounded="lg">
-            <div class="text-h4 font-weight-bold text-blue-darken-2">
+          <v-card class="text-center pa-3" color="blue" variant="tonal" elevation="0" rounded="lg">
+            <div class="text-h4 font-weight-bold">
               {{ analytics.overall_attendance_rate }}%
             </div>
             <div class="text-caption text-medium-emphasis">Посещаемость</div>
@@ -104,11 +104,11 @@
                 </v-chip>
               </td>
               <td class="text-center">{{ s.attendance_rate }}%</td>
-              <td class="text-center text-red">{{ s.grade_distribution['2'] || 0 }}</td>
-              <td class="text-center text-orange">{{ s.grade_distribution['3'] || 0 }}</td>
-              <td class="text-center text-green">{{ s.grade_distribution['4'] || 0 }}</td>
-              <td class="text-center text-green-darken-2">{{ s.grade_distribution['5'] || 0 }}</td>
-              <td class="text-center text-grey">{{ s.grade_distribution['Н'] || 0 }}</td>
+              <td class="text-center text-error">{{ s.grade_distribution['2'] || 0 }}</td>
+              <td class="text-center text-warning">{{ s.grade_distribution['3'] || 0 }}</td>
+              <td class="text-center text-success">{{ s.grade_distribution['4'] || 0 }}</td>
+              <td class="text-center text-success">{{ s.grade_distribution['5'] || 0 }}</td>
+              <td class="text-center text-disabled">{{ s.grade_distribution['Н'] || 0 }}</td>
             </tr>
           </tbody>
         </v-table>
@@ -122,6 +122,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { Bar, Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -133,6 +134,7 @@ import api from '../../api/axios'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement)
 
+const theme = useTheme()
 const groups = ref([])
 const selectedGroupId = ref(null)
 const analytics = ref(null)
@@ -172,7 +174,7 @@ const subjectChartData = computed(() => {
     datasets: [{
       label: 'Средний балл',
       data: subjects.map(s => s.avg_grade),
-      backgroundColor: '#5c6bc0',
+      backgroundColor: theme.current.value.colors.primary,
       borderRadius: 6,
     }],
   }
@@ -193,7 +195,7 @@ const gradeDistChartData = computed(() => {
     datasets: [{
       data: ['2', '3', '4', '5', 'Н'].map(k => total[k]),
       backgroundColor: ['#ef5350', '#ffa726', '#66bb6a', '#26a69a', '#bdbdbd'],
-      borderWidth: 1,
+      borderWidth: 0,
     }],
   }
 })

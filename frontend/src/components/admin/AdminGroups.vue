@@ -3,8 +3,8 @@
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between">
         <h6 class="admin-section-title text-h6 font-weight-bold"> Управление группами</h6>
-        <v-btn 
-          color="orange-darken-2" 
+        <v-btn
+          color="warning"
           prepend-icon="mdi-arrow-up"
           @click="showPromotionDialog = true"
         >
@@ -16,9 +16,10 @@
     <!-- Диалог перевода групп -->
     <v-dialog v-model="showPromotionDialog" width="600">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="bg-orange-darken-2 text-white">
-           Перевод групп на следующий курс
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Перевод групп на следующий курс
         </v-card-title>
+        <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-alert type="warning" variant="tonal" class="mb-4">
              Это действие переведет выбранные группы на следующий курс!
@@ -38,9 +39,9 @@
             class="mb-4"
           ></v-select>
 
-          <v-btn 
-            color="orange-darken-2" 
-            block 
+          <v-btn
+            color="warning"
+            block
             size="large"
             :loading="promotionLoading"
             @click="promoteGroups"
@@ -75,7 +76,7 @@
         class="mb-4"
       >
         <v-card class="rounded-lg" elevation="1">
-          <v-card-title class="bg-indigo-lighten-4">
+          <v-card-title class="bg-surface-variant">
              {{ course.year }} курс ({{ course.groups.length }} {{ pluralize(course.groups.length, 'группа') }})
           </v-card-title>
           <v-card-text class="pa-4">
@@ -89,12 +90,13 @@
               >
                 <v-card 
                   class="rounded-lg cursor-pointer transition-all"
-                  :class="{ 'bg-indigo-lighten-5': selectedGroupsForPromotion.includes(group.id) }"
+                  :class="{ 'border-primary border-opacity-100': selectedGroupsForPromotion.includes(group.id) }"
+                  :border="selectedGroupsForPromotion.includes(group.id) ? 'primary sm' : false"
                   @click="toggleGroupSelection(group.id)"
                 >
                   <v-card-text class="pa-4">
                     <div class="text-h6 font-weight-bold">{{ group.group_name }}</div>
-                    <div class="text-body-2 text-grey-darken-2 mt-2">
+                    <div class="text-body-2 text-medium-emphasis mt-2">
                        {{ group.course_year }} курс
                     </div>
                     <v-checkbox
@@ -108,7 +110,7 @@
               </v-col>
 
               <v-col v-if="course.groups.length === 0" cols="12">
-                <div class="text-center text-grey-darken-2 py-8">
+                <div class="text-center text-medium-emphasis py-8">
                   Нет групп на этом курсе
                 </div>
               </v-col>
