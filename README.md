@@ -1,178 +1,150 @@
-# Журнал преподавателя (Teacher's Journal)
+# Журнал преподавателя
 
-Веб-приложение для автоматизации учета успеваемости студентов и управления учебным процессом. Позволяет преподавателям выставлять оценки, отслеживать посещаемость и экспортировать данные в формат Excel.
+Веб-приложение для автоматизации учёта успеваемости студентов и управления учебным процессом. Преподаватели выставляют оценки и отслеживают посещаемость через интерактивный журнал; администраторы управляют пользователями, группами и просматривают аналитику.
 
 ## Основные функции
 
-* **Управление оценками:** Интерактивная таблица для выставления баллов и отметок о посещаемости ("Н").
-* **Фильтрация:** Быстрый поиск по курсам (1-4) и академическим группам.
-* **Экспорт в Excel:** Мгновенная выгрузка текущего журнала в таблицу `.xlsx` прямо из браузера.
-* **Темы оформления:** Поддержка светлого и темного режимов для комфортной работы в любое время суток.
-* **Безопасность:** Система авторизации на базе JWT-токенов с функцией "Запомнить меня".
+**Журнал преподавателя**
+- Интерактивная таблица оценок с выбором курса, группы и предмета
+- Выставление оценок (2–5) и отметок об отсутствии («Н») с комментарием
+- Экспорт текущего журнала в `.xlsx` прямо из браузера
 
-##  Технологический стек
+**Панель администратора**
+- Управление преподавателями: создание, редактирование, блокировка, сброс пароля
+- Управление группами: перевод на следующий курс
+- Импорт студентов из CSV с предпросмотром и dry-run режимом
+- Восстановление удалённых студентов (soft delete)
+- Аналитика по группам: средний балл, посещаемость, распределение оценок, графики (Chart.js)
+- Рассылка уведомлений преподавателям
+- Логи аудита всех административных действий
 
-### Frontend:
-* **Vue.js 3** (Composition API) — основная логика интерфейса.
-* **Vuetify 3** — библиотека UI-компонентов и систем тем оформления.
-* **Axios** — взаимодействие с API бэкенда.
-* **XLSX (SheetJS)** — генерация Excel-файлов на стороне клиента.
+**Общее**
+- Авторизация на JWT с refresh-токенами и функцией «Запомнить меня»
+- Поддержка светлой и тёмной тем оформления
+- Ролевая модель: `teacher` / `admin`
 
-### Backend:
-* **FastAPI** (Python) — высокопроизводительный серверный фреймворк.
-* **SQLAlchemy** — ORM для работы с базой данных.
-* **MySQL** — реляционная база данных для хранения данных студентов и оценок.
+## Технологический стек
 
----
+| Слой | Технологии |
+|---|---|
+| Frontend | Vue 3 (Composition API), Vuetify 3, Vue Router, Axios, vue-chartjs, SheetJS |
+| Backend | FastAPI, SQLAlchemy 2, Alembic, Pydantic v2, python-jose, passlib/bcrypt |
+| База данных | MySQL |
 
-##  Установка и запуск
+## Установка и запуск
 
-### 1. Предварительные требования
-Убедитесь, что у вас установлены:
-* Python 3.9+
-* Node.js 16+
-* MySQL Server
+### Требования
+- Python 3.9+
+- Node.js 18+
+- MySQL Server
 
-### 2. Настройка Бэкенда (Python)
+### Backend
 
 ```bash
 cd backend
 
-# Создание и активация виртуального окружения
+# Создать и активировать виртуальное окружение
 python -m venv venv
-# Для Windows:
-venv\Scripts\activate
-# Для Linux/Mac:
-source venv/bin/activate
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux / macOS
 
-# Установка зависимостей
-pip install fastapi uvicorn sqlalchemy mysql-connector-python pydantic python-jose passlib
+pip install -r requirements.txt
+
+# Настроить переменные окружения
+copy .env.example .env       # Windows
+# cp .env.example .env       # Linux / macOS
+# Отредактировать .env — заполнить данные MySQL и SECRET_KEY
+
+# Применить миграции БД
+alembic upgrade head
+
+# Запустить сервер разработки
+uvicorn main:app --reload
+# → http://localhost:8000
+# → http://localhost:8000/docs  (Swagger UI)
 ```
 
-### 3. Настройка переменных окружения
-
-Скопируйте `.env.example` в `.env` и заполните реальные значения:
+### Frontend
 
 ```bash
-cd backend
-cp .env.example .env  # Для Windows используйте: copy .env.example .env
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
 ```
 
-Отредактируйте `.env` файл с вашими данными БД и секретным ключом:
+## Переменные окружения (backend/.env)
+
 ```env
 DATABASE_USER=teacher_app
 DATABASE_PASSWORD=your_password
 DATABASE_HOST=127.0.0.1
 DATABASE_PORT=3306
 DATABASE_NAME=teacher_journal
-SECRET_KEY=your_super_secret_key_change_me_in_production
+
+SECRET_KEY=           # openssl rand -hex 32
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-### 4. Запуск приложения
-
-**Запуск Бэкенда:**
-```bash
-cd backend
-# Убедитесь, что виртуальное окружение активировано
-python -m uvicorn main:app --reload
-# Сервер будет доступен на http://localhost:8000
-```
-
-**Запуск Фронтенда** (в отдельном терминале):
-```bash
-cd frontend
-npm install
-npm run dev
-# Приложение откроется на http://localhost:5173
-```
-
----
-
-## 📁 Структура проекта
+## Структура проекта
 
 ```
 Teacher-s-journal/
-├── backend/              # FastAPI приложение
-│   ├── routers/         # API маршруты (авторизация, журнал, управление)
-│   ├── models.py        # SQLAlchemy модели БД
-│   ├── schemas.py       # Pydantic схемы валидации
-│   ├── database.py      # Конфигурация подключения к БД
-│   ├── crud.py          # CRUD операции
-│   ├── main.py          # Главный файл приложения
-│   ├── config.py        # Конфигурация приложения
-│   └── .env.example     # Шаблон переменных окружения
+├── backend/
+│   ├── routers/
+│   │   ├── auth.py          # /token, /refresh, /logout
+│   │   ├── journal.py       # Оценки и уроки
+│   │   ├── curriculum.py    # Предметы, расписание
+│   │   ├── admin.py         # Управление преподавателями, группами, студентами
+│   │   └── dependencies.py  # get_db, get_current_user
+│   ├── alembic/             # Миграции БД
+│   ├── models.py            # ORM-модели (12 таблиц)
+│   ├── schemas.py           # Pydantic схемы
+│   ├── crud.py              # Все запросы к БД
+│   ├── auth.py              # JWT и bcrypt
+│   ├── main.py              # Инициализация приложения, CORS
+│   ├── config.py            # Настройки через pydantic-settings
+│   ├── requirements.txt
+│   └── .env.example
 │
-├── frontend/            # Vue.js + Vite приложение
-│   ├── src/
-│   │   ├── components/  # Vue компоненты (табличное представление, фильтры)
-│   │   ├── views/       # Страницы (Журнал, Администрирование, Логин)
-│   │   ├── router/      # Маршрутизация
-│   │   ├── api/         # Axios клиент и хранилище авторизации
-│   │   └── App.vue      # Корневой компонент
-│   ├── index.html       # HTML точка входа
-│   ├── vite.config.js   # Конфигурация Vite
-│   └── package.json     # Зависимости Node.js
-│
-└── README.md            # Этот файл
+└── frontend/src/
+    ├── views/
+    │   ├── LoginView.vue
+    │   ├── JournalView.vue   # Журнал преподавателя
+    │   └── AdminView.vue     # Панель администратора
+    ├── components/admin/     # AdminTeachers, AdminGroups, AdminAnalytics,
+    │                         # AdminAuditLogs, AdminNotifications,
+    │                         # AdminStudentImport, AdminStudentRecovery,
+    │                         # AdminStatistics
+    ├── router/index.js       # Навигационные гарды (role-based)
+    └── api/
+        ├── axios.js          # Axios + авто-обновление токена при 401
+        └── authStorage.js    # Работа с localStorage / sessionStorage
 ```
 
-## 🔌 API маршруты
+## Основные API маршруты
 
-### Аутентификация
-- `POST /api/auth/login` — Вход в систему
-- `POST /api/auth/refresh` — Обновление JWT токена
-- `POST /api/auth/logout` — Выход из системы
-
-### Журнал (данные студентов и оценок)
-- `GET /api/journal/groups` — Получить список групп
-- `GET /api/journal/students/{group_id}` — Получить студентов группы
-- `GET /api/journal/marks` — Получить оценки
-- `POST /api/journal/marks` — Добавить/обновить оценку
-
-### Администрирование (только для админов)
-- `GET /api/admin/teachers` — Список преподавателей
-- `GET /api/admin/audit-logs` — Логи действий
-
-## 💥 Требуемые зависимости (Backend)
-
-Установка всех необходимых пакетов:
-```bash
-pip install fastapi uvicorn sqlalchemy mysql-connector-python pydantic python-jose[cryptography] passlib[bcrypt]
-```
-
-## 🛠️ Доступные npm команды (Frontend)
-
-```bash
-npm run dev      # Запустить сервер разработки
-npm run build    # Собрать приложение для продакшена
-npm run preview  # Превью собранного приложения
-```
-
-## ⚙️ Переменные окружения (Backend)
-
-Смотрите файл `.env.example` для полного списка с описокнаниями:
-- `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME` — Подключение к MySQL
-- `SECRET_KEY` — Секретный ключ для подписи JWT (генерируйте безопасный в продакшене!)
-- `ALGORITHM` — Алгоритм JWT кодирования
-- `ACCESS_TOKEN_EXPIRE_MINUTES` — Время жизни access токена
-- `REFRESH_TOKEN_EXPIRE_DAYS` — Время жизни refresh токена
-- `DEBUG` — Режим отладки
-
-## 📝 FAQ
-
-**Q: Как сгенерировать безопасный SECRET_KEY?**
-```bash
-openssl rand -hex 32
-```
-Или в Python:
-```python
-import secrets
-print(secrets.token_hex(32))
-```
-
-**Q: Приложение не подключается к БД**
-- Убедитесь, что MySQL сервер запущен
-- Проверьте учетные данные в `.env` файле
-- Убедитесь, что БД `teacher_journal` создана (или запустите `seed_data.py`)
-
----
+| Метод | Путь | Описание |
+|---|---|---|
+| POST | `/token` | Вход, получение токенов |
+| POST | `/refresh` | Обновление access-токена |
+| POST | `/logout` | Инвалидация токена |
+| GET | `/profile` | Профиль текущего пользователя |
+| PATCH | `/profile` | Обновление профиля и пароля |
+| GET | `/groups/by-course/{year}` | Группы по курсу |
+| GET | `/subjects/by-group/{id}` | Предметы группы |
+| GET | `/lessons/` | Уроки (фильтр по группе/предмету) |
+| PUT | `/grade-records/upsert/` | Создать или обновить оценку |
+| GET | `/admin/teachers/` | Список преподавателей |
+| POST | `/admin/teachers/` | Создать преподавателя |
+| POST | `/admin/teachers/{id}/reset-password` | Сброс пароля |
+| POST | `/admin/groups/promote-year/` | Перевод групп на следующий курс |
+| POST | `/admin/students/bulk-import` | Импорт студентов из CSV |
+| GET | `/admin/students/deleted` | Удалённые студенты |
+| POST | `/admin/students/{id}/restore` | Восстановить студента |
+| POST | `/admin/notifications/send` | Отправить уведомление |
+| GET | `/admin/audit-logs/` | Логи аудита |
+| GET | `/admin/statistics/` | Общая статистика |
+| GET | `/analytics/group/{id}` | Аналитика по группе |
