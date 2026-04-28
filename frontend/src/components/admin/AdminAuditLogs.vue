@@ -140,9 +140,9 @@ const formatDate = (dateString) => {
 
 const formatAction = (action) => {
   const actions = {
-    'create': '➕ Создано',
-    'update': '✏️ Обновлено',
-    'delete': '🗑️ Удалено',
+    'create': ' Создано',
+    'update': ' Обновлено',
+    'delete': ' Удалено',
     'reset_password': ' Сброс пароля',
     'block_teacher': ' Блокировано',
     'unblock_teacher': ' Разблокировано',
