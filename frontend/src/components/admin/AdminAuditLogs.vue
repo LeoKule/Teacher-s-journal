@@ -66,7 +66,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-grey-lighten-4">
+          <tr v-for="log in filteredLogs" :key="log.id" class="log-row">
             <td class="text-body-2">{{ formatDate(log.created_at) }}</td>
             <td class="text-body-2">
               <span v-if="log.admin_id">Admin #{{ log.admin_id }}</span>
@@ -223,7 +223,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.hover\:bg-grey-lighten-4:hover {
+.log-row:hover {
   background-color: #f5f5f5;
 }
 </style>

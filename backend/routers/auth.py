@@ -123,6 +123,9 @@ async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Refresh token missing")
 
     try:
+        if auth.is_token_blacklisted(db, refresh_token):
+            raise HTTPException(status_code=401, detail="Refresh token revoked")
+
         payload = jwt.decode(refresh_token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:

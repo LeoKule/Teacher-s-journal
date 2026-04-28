@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import models
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,7 +66,7 @@ async def _cleanup_token_blacklist():
         db = SessionLocal()
         try:
             deleted = db.query(models.TokenBlacklist).filter(
-                models.TokenBlacklist.expires_at < datetime.utcnow()
+                models.TokenBlacklist.expires_at < datetime.now(timezone.utc)
             ).delete()
             db.commit()
             if deleted:

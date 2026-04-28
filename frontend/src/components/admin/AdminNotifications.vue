@@ -136,7 +136,7 @@
           variant="tonal"
           class="rounded-lg"
           closable
-          @input="(v) => { if (!v) sendResult = null }"
+          @update:modelValue="(v) => { if (!v) sendResult = null }"
         >
           {{ sendResult.message }}
         </v-alert>

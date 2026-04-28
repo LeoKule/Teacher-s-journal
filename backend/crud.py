@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 from sqlalchemy.orm import Session, joinedload
 import models, schemas, auth
@@ -933,17 +933,6 @@ def soft_delete_student(db: Session, student_id: int):
     return student
 
 
-def restore_student(db: Session, student_id: int):
-    """Восстанавливает удаленного студента"""
-    student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if student is None:
-        return None
-    student.is_deleted = False
-    db.commit()
-    db.refresh(student)
-    return student
-
-
 def soft_delete_subject(db: Session, subject_id: int):
     """Мягко удаляет предмет (помечает как удаленный)"""
     subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
@@ -1061,7 +1050,7 @@ def update_teacher_by_admin(db: Session, teacher_id: int, teacher_data: schemas.
                 return None
         setattr(teacher, field_name, value)
     
-    teacher.updated_at = auth.datetime.now(auth.timezone.utc)
+    teacher.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(teacher)
     return teacher
@@ -1256,7 +1245,7 @@ def update_teacher_profile(
         if existing:
             return None
         teacher.email = data.email
-    teacher.updated_at = auth.datetime.now(auth.timezone.utc)
+    teacher.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(teacher)
     return teacher

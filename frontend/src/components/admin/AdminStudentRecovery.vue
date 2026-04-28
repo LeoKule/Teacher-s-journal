@@ -83,7 +83,7 @@
       variant="tonal"
       class="mt-6"
       closable
-      @input="(v) => { if (!v) restoreResult = null }"
+      @update:modelValue="(v) => { if (!v) restoreResult = null }"
     >
       {{ restoreResult.message }}
     </v-alert>
