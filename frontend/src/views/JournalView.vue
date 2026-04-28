@@ -243,6 +243,7 @@ import { useTheme } from 'vuetify'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios'
+import { clearAuthData } from '../api/authStorage'
 
 // ===== КОНСТАНТЫ =====
 const GRADE_OPTIONS = [2, 3, 4, 5, 'Н']
@@ -331,6 +332,10 @@ onMounted(() => {
   if (!token) {
     router.push('/')
   }
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme) {
+    theme.global.name.value = savedTheme
+  }
 })
 
 // ===== ОПТИМИЗАЦИЯ ПОИСКА ОЦЕНОК =====
@@ -345,7 +350,9 @@ const gradesMap = computed(() => {
 // Функция переключения
 const toggleTheme = () => {
   const isDark = theme.global.current.value.dark
-  theme.global.name.value = isDark ? 'light' : 'dark'
+  const newTheme = isDark ? 'light' : 'dark'
+  theme.global.name.value = newTheme
+  localStorage.setItem('theme', newTheme)
 }
 
 const onCourseChange = async () => {
@@ -478,16 +485,7 @@ const formatDate = (dateStr) => {
 }
 
 const logout = () => {
-  // Чистим оба хранилища
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('user_role')
-  localStorage.removeItem('user_id')
-  localStorage.removeItem('full_name')
-  sessionStorage.removeItem('access_token')
-  sessionStorage.removeItem('user_role')
-  sessionStorage.removeItem('user_id')
-  sessionStorage.removeItem('full_name')
-  
+  clearAuthData()
   router.push('/')
 }
 
