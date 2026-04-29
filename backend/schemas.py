@@ -26,6 +26,7 @@ class GroupUpdate(BaseModel):
 
 class Group(GroupBase):
     id: int
+    students_count: int = 0
     class Config:
         from_attributes = True # Позволяет Pydantic читать данные из моделей SQLAlchemy
 
@@ -277,9 +278,28 @@ class TeachingAssignmentCreate(TeachingAssignmentBase):
     pass
 
 
+class TeachingAssignmentAdminCreate(BaseModel):
+    teacher_id: int
+    subject_name: str = Field(min_length=1, max_length=100)
+    group_id: int
+    academic_period_id: int
+
+
 class TeachingAssignment(BaseModel):
     id: int
     teacher_id: int
+    subject: "SubjectShort"
+    group: "GroupShort"
+    academic_period: AcademicPeriodShort
+
+    class Config:
+        from_attributes = True
+
+
+class TeachingAssignmentWithTeacher(BaseModel):
+    id: int
+    teacher_id: int
+    teacher_name: str
     subject: "SubjectShort"
     group: "GroupShort"
     academic_period: AcademicPeriodShort
@@ -517,6 +537,20 @@ class NotificationSendResponse(BaseModel):
     success: bool
     message: str
     recipients_count: int
+
+
+class NotificationRecord(BaseModel):
+    """Запись об отправленном уведомлении (история)"""
+    id: int
+    admin_id: int
+    notification_type: str
+    title: str
+    message: str
+    recipients_count: int
+    created_at: str
+
+    class Config:
+        from_attributes = True
 
 
 class ProfileUpdate(BaseModel):
