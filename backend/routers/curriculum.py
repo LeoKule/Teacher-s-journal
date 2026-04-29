@@ -25,7 +25,7 @@ def read_groups(
 ):
     """Получить группы, где преподаватель ведет занятия"""
     if current_teacher.role == "admin":
-        return crud.get_groups(db)
+        return crud.get_groups_with_count(db)
     return crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
 
 
@@ -67,6 +67,21 @@ def update_group(
     return updated
 
 
+@router.delete("/groups/{group_id}")
+def delete_group(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Удалить группу (только администратор, только если нет активных студентов)"""
+    if current_teacher.role != "admin":
+        raise HTTPException(status_code=403, detail="Требуется роль администратора")
+    success = crud.delete_group(db, group_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Группа не найдена или содержит активных студентов")
+    return {"ok": True}
+
+
 # ========== СТУДЕНТЫ ==========
 
 @router.get("/students/", response_model=List[schemas.Student])
@@ -78,6 +93,8 @@ def read_students(
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
     """Получить студентов из групп, где преподаватель ведет занятия"""
+    if current_teacher.role == "admin":
+        return crud.get_students(db=db, group_id=group_id)
     if group_id is not None:
         group = crud.get_group_by_id(db, group_id=group_id)
         if group is None:
