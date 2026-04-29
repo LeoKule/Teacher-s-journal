@@ -1,11 +1,47 @@
 from datetime import date, timedelta, datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 import models, schemas, auth
 
 # Получить список всех групп
 def get_groups(db: Session):
     return db.query(models.StudentGroup).all()
+
+
+def get_groups_with_count(db: Session) -> list:
+    subq = (
+        db.query(models.Student.group_id, func.count(models.Student.id).label("cnt"))
+        .filter(models.Student.is_deleted == False)
+        .group_by(models.Student.group_id)
+        .subquery()
+    )
+    rows = (
+        db.query(models.StudentGroup, func.coalesce(subq.c.cnt, 0))
+        .outerjoin(subq, models.StudentGroup.id == subq.c.group_id)
+        .all()
+    )
+    return [
+        schemas.Group(
+            id=g.id,
+            group_name=g.group_name,
+            course_year=g.course_year,
+            students_count=count,
+        )
+        for g, count in rows
+    ]
+
+
+def delete_group(db: Session, group_id: int) -> bool:
+    group = db.query(models.StudentGroup).filter_by(id=group_id).first()
+    if not group:
+        return False
+    active = db.query(models.Student).filter_by(group_id=group_id, is_deleted=False).count()
+    if active > 0:
+        return False
+    db.delete(group)
+    db.commit()
+    return True
 
 
 def get_groups_for_teacher(db: Session, teacher_id: int):
@@ -591,6 +627,46 @@ def get_subjects(db: Session, teacher_id: int):
     )
 
 
+def get_all_teaching_assignments(
+    db: Session,
+    teacher_id: int | None = None,
+    group_id: int | None = None,
+):
+    query = (
+        db.query(models.TeachingAssignment)
+        .options(
+            joinedload(models.TeachingAssignment.subject),
+            joinedload(models.TeachingAssignment.group),
+            joinedload(models.TeachingAssignment.academic_period),
+            joinedload(models.TeachingAssignment.teacher),
+        )
+    )
+    if teacher_id is not None:
+        query = query.filter(models.TeachingAssignment.teacher_id == teacher_id)
+    if group_id is not None:
+        query = query.filter(models.TeachingAssignment.group_id == group_id)
+    return query.order_by(models.TeachingAssignment.id.desc()).all()
+
+
+def find_or_create_subject(db: Session, teacher_id: int, name: str) -> models.Subject:
+    existing = (
+        db.query(models.Subject)
+        .filter(
+            models.Subject.teacher_id == teacher_id,
+            models.Subject.name == name,
+            models.Subject.is_deleted == False,
+        )
+        .first()
+    )
+    if existing:
+        return existing
+    subject = models.Subject(name=name, teacher_id=teacher_id)
+    db.add(subject)
+    db.commit()
+    db.refresh(subject)
+    return subject
+
+
 def get_subject_by_id(db: Session, subject_id: int):
     return db.query(models.Subject).filter(
         models.Subject.id == subject_id,
@@ -742,15 +818,19 @@ def delete_grade_record(db: Session, db_grade_record: models.GradeRecord):
 
 
 def upsert_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
-    existing_record = get_grade_record_by_lesson_and_student(
-        db,
-        lesson_id=grade_record.lesson_id,
-        student_id=grade_record.student_id,
+    existing_record = (
+        db.query(models.GradeRecord)
+        .filter(
+            models.GradeRecord.lesson_id == grade_record.lesson_id,
+            models.GradeRecord.student_id == grade_record.student_id,
+        )
+        .first()
     )
 
     if existing_record is None:
         return create_grade_record(db=db, grade_record=grade_record)
 
+    existing_record.is_deleted = False
     existing_record.grade_value = grade_record.grade_value
     existing_record.comment = grade_record.comment
     db.commit()
