@@ -665,6 +665,141 @@ def delete_assignment(
     return {"ok": True}
 
 
+# ========== УПРАВЛЕНИЕ РАСПИСАНИЕМ ==========
+
+@router.get("/schedule-templates/", response_model=List[schemas.ScheduleTemplate])
+def get_schedule_templates(
+    teaching_assignment_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Получить шаблоны расписания для назначения"""
+    return (
+        db.query(models.ScheduleTemplate)
+        .filter(models.ScheduleTemplate.teaching_assignment_id == teaching_assignment_id)
+        .order_by(models.ScheduleTemplate.day_of_week, models.ScheduleTemplate.lesson_number)
+        .all()
+    )
+
+
+@router.post("/schedule-templates/", response_model=schemas.ScheduleTemplate)
+def create_schedule_template(
+    data: schemas.ScheduleTemplateCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Создать шаблон расписания для любого назначения"""
+    assignment = db.query(models.TeachingAssignment).filter_by(id=data.teaching_assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Назначение не найдено")
+    existing = crud.get_schedule_template_by_slot(
+        db,
+        teaching_assignment_id=data.teaching_assignment_id,
+        day_of_week=data.day_of_week,
+        lesson_number=data.lesson_number,
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Шаблон для этого слота уже существует")
+    template = crud.create_schedule_template(db, data)
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="create",
+        entity_type="schedule_template",
+        entity_id=template.id,
+        description=f"Создан шаблон расписания: день {data.day_of_week}, урок {data.lesson_number}",
+    )
+    return template
+
+
+@router.delete("/schedule-templates/{template_id}")
+def delete_schedule_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Удалить шаблон расписания"""
+    template = db.query(models.ScheduleTemplate).filter_by(id=template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Шаблон не найден")
+    db.delete(template)
+    db.commit()
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="delete",
+        entity_type="schedule_template",
+        entity_id=template_id,
+        description="Удалён шаблон расписания",
+    )
+    return {"ok": True}
+
+
+@router.post("/lessons/generate/preview/", response_model=schemas.LessonGenerationPreviewResponse)
+def admin_preview_lessons(
+    payload: schemas.LessonGenerationRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Предпросмотр генерируемых уроков (администратор)"""
+    if payload.teaching_assignment_id is None:
+        raise HTTPException(status_code=400, detail="Укажите teaching_assignment_id")
+    assignment = db.query(models.TeachingAssignment).filter_by(id=payload.teaching_assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Назначение не найдено")
+    templates = crud.get_schedule_templates_for_generation(
+        db=db,
+        teacher_id=assignment.teacher_id,
+        academic_period_id=payload.academic_period_id,
+        teaching_assignment_id=payload.teaching_assignment_id,
+    )
+    if not templates:
+        raise HTTPException(status_code=400, detail="Нет шаблонов расписания для предпросмотра")
+    return crud.preview_lessons_from_templates(
+        db=db,
+        templates=templates,
+        date_from=payload.date_from,
+        date_to=payload.date_to,
+    )
+
+
+@router.post("/lessons/generate/", response_model=schemas.LessonGenerationResponse)
+def admin_generate_lessons(
+    payload: schemas.LessonGenerationRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Сгенерировать уроки из шаблонов расписания (администратор)"""
+    if payload.teaching_assignment_id is None:
+        raise HTTPException(status_code=400, detail="Укажите teaching_assignment_id")
+    assignment = db.query(models.TeachingAssignment).filter_by(id=payload.teaching_assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Назначение не найдено")
+    templates = crud.get_schedule_templates_for_generation(
+        db=db,
+        teacher_id=assignment.teacher_id,
+        academic_period_id=payload.academic_period_id,
+        teaching_assignment_id=payload.teaching_assignment_id,
+    )
+    if not templates:
+        raise HTTPException(status_code=400, detail="Нет шаблонов расписания для генерации")
+    result = crud.generate_lessons_from_templates(
+        db=db,
+        templates=templates,
+        date_from=payload.date_from,
+        date_to=payload.date_to,
+    )
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="generate_lessons",
+        entity_type="lesson",
+        entity_id=None,
+        description=f"Сгенерировано {result['generated_count']} уроков для назначения #{payload.teaching_assignment_id}",
+    )
+    return result
+
+
 # ========== УПРАВЛЕНИЕ УВЕДОМЛЕНИЯМИ ==========
 
 @router.post("/notifications/send", response_model=schemas.NotificationSendResponse)
