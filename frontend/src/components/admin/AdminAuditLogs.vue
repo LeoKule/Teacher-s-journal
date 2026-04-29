@@ -39,14 +39,18 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-btn
-          color="primary"
-          block
-          @click="loadLogs"
-          :loading="loading"
-        >
-          Обновить
-        </v-btn>
+        <v-row no-gutters class="gap-2">
+          <v-col>
+            <v-btn color="primary" block @click="loadLogs" :loading="loading">
+              Обновить
+            </v-btn>
+          </v-col>
+          <v-col>
+            <v-btn color="success" variant="outlined" block prepend-icon="mdi-download" @click="exportToCsv">
+              CSV
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-col>
     </v-row>
 
@@ -196,6 +200,28 @@ const filteredLogs = computed(() => {
 
   return result
 })
+
+const exportToCsv = () => {
+  const headers = ['Дата/Время', 'Администратор', 'Действие', 'Тип сущности', 'ID сущности', 'Описание']
+  const rows = filteredLogs.value.map(log => [
+    formatDate(log.created_at),
+    log.admin_id ? `Admin #${log.admin_id}` : 'Система',
+    formatAction(log.action),
+    formatEntityType(log.entity_type),
+    log.entity_id || '',
+    log.description || ''
+  ])
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const loadLogs = async () => {
   try {
