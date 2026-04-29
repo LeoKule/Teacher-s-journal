@@ -4,12 +4,13 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import models
 import schemas
 import crud
 import logging
+import json
 from routers.dependencies import get_db, get_current_admin
 
 logger = logging.getLogger(__name__)
@@ -512,6 +513,158 @@ def restore_student(
     )
 
 
+@router.delete("/students/{student_id}")
+def hard_delete_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Окончательно удалить студента из базы данных (необратимо)"""
+    student = db.query(models.Student).filter_by(id=student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    name = f"{student.full_name}"
+    db.query(models.GradeRecord).filter_by(student_id=student_id).delete()
+    db.delete(student)
+    db.commit()
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="delete",
+        entity_type="student",
+        entity_id=student_id,
+        description=f"Жёсткое удаление студента {name}",
+    )
+    return {"ok": True}
+
+
+# ========== УПРАВЛЕНИЕ НАЗНАЧЕНИЯМИ ==========
+
+@router.get("/assignments/", response_model=List[schemas.TeachingAssignmentWithTeacher])
+def get_assignments(
+    teacher_id: Optional[int] = Query(None),
+    group_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Получить все назначения преподавателей"""
+    assignments = crud.get_all_teaching_assignments(db, teacher_id=teacher_id, group_id=group_id)
+    return [
+        schemas.TeachingAssignmentWithTeacher(
+            id=a.id,
+            teacher_id=a.teacher_id,
+            teacher_name=a.teacher.full_name,
+            subject=schemas.SubjectShort(id=a.subject.id, name=a.subject.name),
+            group=schemas.GroupShort(id=a.group.id, group_name=a.group.group_name, course_year=a.group.course_year),
+            academic_period=schemas.AcademicPeriodShort(
+                id=a.academic_period.id,
+                name=a.academic_period.name,
+                academic_year=a.academic_period.academic_year,
+                semester_number=a.academic_period.semester_number,
+            ),
+        )
+        for a in assignments
+    ]
+
+
+@router.post("/assignments/", response_model=schemas.TeachingAssignmentWithTeacher)
+def create_assignment(
+    data: schemas.TeachingAssignmentAdminCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Создать назначение: преподаватель → предмет → группа → период"""
+    teacher = crud.get_teacher_by_id(db, data.teacher_id)
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Преподаватель не найден")
+    group = crud.get_group_by_id(db, data.group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    period = crud.get_academic_period_by_id(db, data.academic_period_id)
+    if not period:
+        raise HTTPException(status_code=404, detail="Учебный период не найден")
+
+    subject = crud.find_or_create_subject(db, data.teacher_id, data.subject_name.strip())
+
+    existing = crud.get_teaching_assignment_by_scope(
+        db,
+        teacher_id=data.teacher_id,
+        subject_id=subject.id,
+        group_id=data.group_id,
+        academic_period_id=data.academic_period_id,
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Такое назначение уже существует")
+
+    assignment = crud.create_teaching_assignment(
+        db,
+        teacher_id=data.teacher_id,
+        teaching_assignment=schemas.TeachingAssignmentCreate(
+            subject_id=subject.id,
+            group_id=data.group_id,
+            academic_period_id=data.academic_period_id,
+        ),
+    )
+
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="create",
+        entity_type="teaching_assignment",
+        entity_id=assignment.id,
+        description=f"Назначен {teacher.full_name} → {subject.name} → {group.group_name}",
+    )
+
+    return schemas.TeachingAssignmentWithTeacher(
+        id=assignment.id,
+        teacher_id=assignment.teacher_id,
+        teacher_name=teacher.full_name,
+        subject=schemas.SubjectShort(id=subject.id, name=subject.name),
+        group=schemas.GroupShort(id=group.id, group_name=group.group_name, course_year=group.course_year),
+        academic_period=schemas.AcademicPeriodShort(
+            id=period.id,
+            name=period.name,
+            academic_year=period.academic_year,
+            semester_number=period.semester_number,
+        ),
+    )
+
+
+@router.delete("/assignments/{assignment_id}")
+def delete_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Удалить назначение"""
+    assignment = (
+        db.query(models.TeachingAssignment)
+        .options(
+            joinedload(models.TeachingAssignment.teacher),
+            joinedload(models.TeachingAssignment.subject),
+            joinedload(models.TeachingAssignment.group),
+        )
+        .filter_by(id=assignment_id)
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Назначение не найдено")
+
+    desc = f"Удалено назначение: {assignment.teacher.full_name} → {assignment.subject.name} → {assignment.group.group_name}"
+    db.delete(assignment)
+    db.commit()
+
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="delete",
+        entity_type="teaching_assignment",
+        entity_id=assignment_id,
+        description=desc,
+    )
+    return {"ok": True}
+
+
 # ========== УПРАВЛЕНИЕ УВЕДОМЛЕНИЯМИ ==========
 
 @router.post("/notifications/send", response_model=schemas.NotificationSendResponse)
@@ -552,19 +705,58 @@ def send_notification(
         f"Уведомление '{notification_request.title}' отправлено на адреса: {', '.join(recipients_emails)}"
     )
     
+    # Сохраняем уведомление в истории
+    notification = models.Notification(
+        admin_id=current_admin.id,
+        notification_type=notification_request.notification_type,
+        title=notification_request.title,
+        message=notification_request.message,
+        recipient_ids=json.dumps(notification_request.recipient_teacher_ids),
+        recipients_count=len(recipients),
+    )
+    db.add(notification)
+    db.commit()
+
     # Создаем запись в логе аудита
     crud.create_audit_log(
         db=db,
         admin_id=current_admin.id,
         action="send_notification",
         entity_type="notification",
-        entity_id=None,
+        entity_id=notification.id,
         description=f"Отправлено уведомление '{notification_request.title}' типа {notification_request.notification_type}",
         new_values=f"type={notification_request.notification_type}, recipients={len(recipients)}"
     )
-    
+
     return schemas.NotificationSendResponse(
         success=True,
         message=f"Уведомление успешно отправлено {len(recipients)} преподавателям",
         recipients_count=len(recipients)
     )
+
+
+@router.get("/notifications/", response_model=List[schemas.NotificationRecord])
+def get_notification_history(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Получить историю отправленных уведомлений"""
+    notifications = (
+        db.query(models.Notification)
+        .order_by(models.Notification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        schemas.NotificationRecord(
+            id=n.id,
+            admin_id=n.admin_id,
+            notification_type=n.notification_type,
+            title=n.title,
+            message=n.message,
+            recipients_count=n.recipients_count,
+            created_at=n.created_at.isoformat(),
+        )
+        for n in notifications
+    ]
