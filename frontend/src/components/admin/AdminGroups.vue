@@ -1,17 +1,70 @@
 <template>
   <v-card-text class="pa-6">
     <v-row class="mb-6">
-      <v-col cols="12" class="d-flex align-center justify-space-between">
-        <h6 class="admin-section-title text-h6 font-weight-bold"> Управление группами</h6>
-        <v-btn
-          color="warning"
-          prepend-icon="mdi-arrow-up"
-          @click="showPromotionDialog = true"
-        >
-          Перевести на следующий курс
-        </v-btn>
+      <v-col cols="12" class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <h6 class="admin-section-title text-h6 font-weight-bold">Управление группами</h6>
+        <div class="d-flex gap-2">
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+            Создать группу
+          </v-btn>
+          <v-btn color="warning" prepend-icon="mdi-arrow-up" @click="showPromotionDialog = true">
+            Перевести на следующий курс
+          </v-btn>
+        </div>
       </v-col>
     </v-row>
+
+    <!-- Диалог создания/редактирования группы -->
+    <v-dialog v-model="showGroupDialog" width="440">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          {{ editingGroup ? 'Редактировать группу' : 'Создать группу' }}
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-6">
+          <v-text-field
+            v-model="groupForm.group_name"
+            label="Название группы"
+            variant="outlined"
+            class="mb-4"
+            :error-messages="groupFormError"
+          ></v-text-field>
+          <v-select
+            v-model="groupForm.course_year"
+            label="Курс"
+            variant="outlined"
+            :items="[1, 2, 3, 4]"
+          ></v-select>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-end gap-2">
+          <v-btn variant="outlined" @click="showGroupDialog = false">Отмена</v-btn>
+          <v-btn
+            color="primary"
+            :loading="groupSaveLoading"
+            :disabled="!groupForm.group_name || !groupForm.course_year"
+            @click="saveGroup"
+          >
+            Сохранить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог подтверждения удаления группы -->
+    <v-dialog v-model="showDeleteDialog" width="420">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold">Удалить группу?</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-6">
+          <p>Группа <strong>{{ deletingGroup?.group_name }}</strong> будет удалена.</p>
+          <p class="text-body-2 text-medium-emphasis mt-2">Удаление возможно только если в группе нет студентов.</p>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-end gap-2">
+          <v-btn variant="outlined" @click="showDeleteDialog = false">Отмена</v-btn>
+          <v-btn color="error" :loading="deleteLoading" @click="deleteGroup">Удалить</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Диалог перевода групп -->
     <v-dialog v-model="showPromotionDialog" width="600">
@@ -22,11 +75,10 @@
         <v-divider></v-divider>
         <v-card-text class="pa-6">
           <v-alert type="warning" variant="tonal" class="mb-4">
-             Это действие переведет выбранные группы на следующий курс!
+            Это действие переведет выбранные группы на следующий курс!
             <br/>
             Например: 1 курс → 2 курс
           </v-alert>
-
           <v-select
             v-model="selectedGroupsForPromotion"
             label="Выберите группы для перевода"
@@ -38,7 +90,6 @@
             chips
             class="mb-4"
           ></v-select>
-
           <v-btn
             color="warning"
             block
@@ -53,7 +104,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Таблица групп по курсам -->
+    <!-- Поиск -->
     <v-row class="mb-4">
       <v-col cols="12">
         <v-text-field
@@ -69,8 +120,8 @@
     <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
 
     <v-row v-if="!loading">
-      <v-col 
-        v-for="course in courseGroups" 
+      <v-col
+        v-for="course in courseGroups"
         :key="course.year"
         cols="12"
         class="mb-4"
@@ -82,30 +133,54 @@
           <v-divider></v-divider>
           <v-card-text class="pa-4">
             <v-row>
-              <v-col 
-                v-for="group in course.groups" 
+              <v-col
+                v-for="group in course.groups"
                 :key="group.id"
                 cols="12"
                 sm="6"
                 md="4"
               >
-                <v-card
-                  class="rounded-lg cursor-pointer transition-all"
-                  variant="outlined"
-                  :color="selectedGroupsForPromotion.includes(group.id) ? 'primary' : undefined"
-                  @click="toggleGroupSelection(group.id)"
-                >
+                <v-card class="rounded-lg" variant="outlined">
                   <v-card-text class="pa-4">
-                    <div class="text-h6 font-weight-bold">{{ group.group_name }}</div>
-                    <div class="text-body-2 mt-2">
-                       {{ group.course_year }} курс
+                    <div class="d-flex align-center justify-space-between mb-1">
+                      <div class="text-h6 font-weight-bold">{{ group.group_name }}</div>
+                      <div class="d-flex gap-1">
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          color="primary"
+                          @click="openStudentsDialog(group)"
+                          title="Просмотр студентов"
+                        >
+                          <v-icon size="18">mdi-account-group</v-icon>
+                        </v-btn>
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          @click="openEditDialog(group)"
+                          title="Редактировать"
+                        >
+                          <v-icon size="18">mdi-pencil</v-icon>
+                        </v-btn>
+                        <v-btn
+                          icon
+                          size="small"
+                          variant="text"
+                          color="error"
+                          :disabled="group.students_count > 0"
+                          @click="openDeleteDialog(group)"
+                          :title="group.students_count > 0 ? 'Нельзя удалить группу со студентами' : 'Удалить'"
+                        >
+                          <v-icon size="18">mdi-delete</v-icon>
+                        </v-btn>
+                      </div>
                     </div>
-                    <v-checkbox
-                      :model-value="selectedGroupsForPromotion.includes(group.id)"
-                      class="mt-2"
-                      hide-details
-                      @click.stop="toggleGroupSelection(group.id)"
-                    ></v-checkbox>
+                    <div class="text-body-2 text-medium-emphasis">{{ group.course_year }} курс</div>
+                    <v-chip size="small" variant="tonal" color="primary" class="mt-2">
+                      {{ group.students_count }} {{ pluralize(group.students_count, 'студент', 'студента', 'студентов') }}
+                    </v-chip>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -119,13 +194,49 @@
           </v-card-text>
         </v-card>
       </v-col>
+
+      <v-col v-if="courseGroups.length === 0" cols="12">
+        <v-alert type="info" variant="tonal">Нет групп. Создайте первую группу.</v-alert>
+      </v-col>
     </v-row>
 
+    <!-- Диалог просмотра студентов группы -->
+    <v-dialog v-model="showStudentsDialog" width="560">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold d-flex align-center justify-space-between">
+          <span>Студенты группы {{ viewingGroup?.group_name }}</span>
+          <v-chip size="small" variant="tonal" color="primary">{{ groupStudents.length }}</v-chip>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-0">
+          <v-progress-linear v-if="studentsLoading" indeterminate></v-progress-linear>
+          <div v-if="!studentsLoading && groupStudents.length === 0" class="text-center text-medium-emphasis py-8">
+            В группе нет студентов
+          </div>
+          <v-list v-if="!studentsLoading && groupStudents.length > 0" density="compact">
+            <v-list-item
+              v-for="(student, idx) in groupStudents"
+              :key="student.id"
+              :prepend-avatar="undefined"
+            >
+              <template #prepend>
+                <span class="text-body-2 text-medium-emphasis mr-3" style="min-width:28px">{{ idx + 1 }}.</span>
+              </template>
+              <v-list-item-title class="text-body-2">{{ student.full_name }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-end">
+          <v-btn variant="outlined" @click="showStudentsDialog = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Алерты -->
-    <v-alert v-if="success" type="success" variant="tonal" class="mt-4" closable @click="success = ''">
+    <v-alert v-if="success" type="success" variant="tonal" class="mt-4" closable @click:close="success = ''">
       {{ success }}
     </v-alert>
-    <v-alert v-if="error" type="error" variant="tonal" class="mt-4" closable @click="error = ''">
+    <v-alert v-if="error" type="error" variant="tonal" class="mt-4" closable @click:close="error = ''">
       {{ error }}
     </v-alert>
   </v-card-text>
@@ -145,29 +256,37 @@ const showPromotionDialog = ref(false)
 const promotionLoading = ref(false)
 const selectedGroupsForPromotion = ref([])
 
+const showGroupDialog = ref(false)
+const editingGroup = ref(null)
+const groupForm = ref({ group_name: '', course_year: 1 })
+const groupFormError = ref('')
+const groupSaveLoading = ref(false)
+
+const showDeleteDialog = ref(false)
+const deletingGroup = ref(null)
+const deleteLoading = ref(false)
+
+const showStudentsDialog = ref(false)
+const viewingGroup = ref(null)
+const groupStudents = ref([])
+const studentsLoading = ref(false)
+
 const pluralize = (count, one, few, many) => {
   if (count % 10 === 1 && count % 100 !== 11) return one
   if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return few
   return many
 }
 
-const availableGroups = computed(() => {
-  return groups.value
-})
+const availableGroups = computed(() => groups.value)
 
 const courseGroups = computed(() => {
   const courses = {}
-  
   filteredGroups.value.forEach(group => {
     if (!courses[group.course_year]) {
-      courses[group.course_year] = {
-        year: group.course_year,
-        groups: []
-      }
+      courses[group.course_year] = { year: group.course_year, groups: [] }
     }
     courses[group.course_year].groups.push(group)
   })
-
   return Object.values(courses).sort((a, b) => a.year - b.year)
 })
 
@@ -191,12 +310,72 @@ const loadGroups = async () => {
   }
 }
 
-const toggleGroupSelection = (groupId) => {
-  const index = selectedGroupsForPromotion.value.indexOf(groupId)
-  if (index > -1) {
-    selectedGroupsForPromotion.value.splice(index, 1)
-  } else {
-    selectedGroupsForPromotion.value.push(groupId)
+const openStudentsDialog = async (group) => {
+  viewingGroup.value = group
+  groupStudents.value = []
+  showStudentsDialog.value = true
+  studentsLoading.value = true
+  try {
+    const res = await api.get('/students/', { params: { group_id: group.id } })
+    groupStudents.value = res.data
+  } catch (err) {
+    console.error(err)
+  } finally {
+    studentsLoading.value = false
+  }
+}
+
+const openCreateDialog = () => {
+  editingGroup.value = null
+  groupForm.value = { group_name: '', course_year: 1 }
+  groupFormError.value = ''
+  showGroupDialog.value = true
+}
+
+const openEditDialog = (group) => {
+  editingGroup.value = group
+  groupForm.value = { group_name: group.group_name, course_year: group.course_year }
+  groupFormError.value = ''
+  showGroupDialog.value = true
+}
+
+const saveGroup = async () => {
+  groupFormError.value = ''
+  groupSaveLoading.value = true
+  try {
+    if (editingGroup.value) {
+      await api.patch(`/groups/${editingGroup.value.id}`, groupForm.value)
+      success.value = `Группа ${groupForm.value.group_name} обновлена`
+    } else {
+      await api.post('/groups/', groupForm.value)
+      success.value = `Группа ${groupForm.value.group_name} создана`
+    }
+    showGroupDialog.value = false
+    await loadGroups()
+  } catch (err) {
+    groupFormError.value = err.response?.data?.detail || 'Ошибка при сохранении'
+  } finally {
+    groupSaveLoading.value = false
+  }
+}
+
+const openDeleteDialog = (group) => {
+  deletingGroup.value = group
+  showDeleteDialog.value = true
+}
+
+const deleteGroup = async () => {
+  deleteLoading.value = true
+  try {
+    await api.delete(`/groups/${deletingGroup.value.id}`)
+    success.value = `Группа ${deletingGroup.value.group_name} удалена`
+    showDeleteDialog.value = false
+    await loadGroups()
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Ошибка при удалении'
+    showDeleteDialog.value = false
+  } finally {
+    deleteLoading.value = false
   }
 }
 
@@ -205,17 +384,15 @@ const promoteGroups = async () => {
     error.value = 'Выберите хотя бы одну группу'
     return
   }
-
   try {
     promotionLoading.value = true
     const response = await api.post('/admin/groups/promote-year/', {
       group_ids: selectedGroupsForPromotion.value
     })
-    
-    success.value = ` Переведено ${response.data.promoted_count} ${pluralize(response.data.promoted_count, 'группу', 'группы', 'групп')}. ${response.data.failed_count > 0 ? `Ошибок: ${response.data.failed_count}` : ''}`
+    const count = response.data.promoted_count
+    success.value = `Переведено ${count} ${pluralize(count, 'группу', 'группы', 'групп')}. ${response.data.failed_count > 0 ? `Ошибок: ${response.data.failed_count}` : ''}`
     showPromotionDialog.value = false
     selectedGroupsForPromotion.value = []
-    
     await loadGroups()
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка при переводе групп'
@@ -228,13 +405,3 @@ onMounted(() => {
   loadGroups()
 })
 </script>
-
-<style scoped>
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.transition-all {
-  transition: all 0.3s ease;
-}
-</style>
