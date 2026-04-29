@@ -247,3 +247,20 @@ class TokenBlacklist(Base):
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
     expires_at = Column(DateTime, nullable=False)  # Когда истекает сам токен
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ========== УВЕДОМЛЕНИЯ ==========
+class Notification(Base):
+    """История отправленных уведомлений"""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
+    notification_type = Column(String(50), nullable=False)
+    title = Column(String(100), nullable=False)
+    message = Column(Text, nullable=False)
+    recipient_ids = Column(Text, nullable=False)  # JSON-список ID получателей
+    recipients_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    admin = relationship("Teacher", foreign_keys=[admin_id])
