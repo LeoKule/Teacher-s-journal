@@ -68,6 +68,12 @@
               Аналитика
             </v-tab>
 
+            <!-- Вкладка: Расписание -->
+            <v-tab value="schedule">
+              <v-icon start>mdi-calendar-clock</v-icon>
+              Расписание
+            </v-tab>
+
             <!-- Вкладка: Уведомления -->
             <v-tab value="notifications">
               <v-icon start>mdi-bell</v-icon>
@@ -117,6 +123,11 @@
                 <AdminAnalytics />
               </v-window-item>
 
+              <!-- СОДЕРЖИМОЕ: Расписание -->
+              <v-window-item value="schedule">
+                <AdminSchedule />
+              </v-window-item>
+
               <!-- СОДЕРЖИМОЕ: Уведомления -->
               <v-window-item value="notifications">
                 <AdminNotifications />
@@ -143,6 +154,7 @@ import AdminStudentRecovery from '../components/admin/AdminStudentRecovery.vue'
 import AdminNotifications from '../components/admin/AdminNotifications.vue'
 import AdminAnalytics from '../components/admin/AdminAnalytics.vue'
 import AdminAssignments from '../components/admin/AdminAssignments.vue'
+import AdminSchedule from '../components/admin/AdminSchedule.vue'
 import { clearAuthData } from '../api/authStorage'
 
 const router = useRouter()
