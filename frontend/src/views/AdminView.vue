@@ -44,6 +44,12 @@
               Группы
             </v-tab>
 
+            <!-- Вкладка: Назначения -->
+            <v-tab value="assignments">
+              <v-icon start>mdi-link-variant</v-icon>
+              Назначения
+            </v-tab>
+
             <!-- Вкладка: Import студентов -->
             <v-tab value="student-import">
               <v-icon start>mdi-file-upload</v-icon>
@@ -91,6 +97,11 @@
                 <AdminGroups />
               </v-window-item>
 
+              <!-- СОДЕРЖИМОЕ: Назначения -->
+              <v-window-item value="assignments">
+                <AdminAssignments />
+              </v-window-item>
+
               <!-- СОДЕРЖИМОЕ: Import студентов -->
               <v-window-item value="student-import">
                 <AdminStudentImport />
@@ -119,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import api from '../api/axios'
@@ -131,11 +142,13 @@ import AdminStudentImport from '../components/admin/AdminStudentImport.vue'
 import AdminStudentRecovery from '../components/admin/AdminStudentRecovery.vue'
 import AdminNotifications from '../components/admin/AdminNotifications.vue'
 import AdminAnalytics from '../components/admin/AdminAnalytics.vue'
+import AdminAssignments from '../components/admin/AdminAssignments.vue'
 import { clearAuthData } from '../api/authStorage'
 
 const router = useRouter()
 const theme = useTheme()
 const activeTab = ref('statistics')
+watch(activeTab, (tab) => { localStorage.setItem('admin_active_tab', tab) })
 const isDarkMode = ref(false)
 const currentUser = ref({
   full_name: '',
@@ -144,6 +157,10 @@ const currentUser = ref({
 })
 
 onMounted(() => {
+  // Восстанавливаем активную вкладку
+  const savedTab = localStorage.getItem('admin_active_tab')
+  if (savedTab) activeTab.value = savedTab
+
   // Загружаем сохраненное предпочтение темы
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'dark') {
