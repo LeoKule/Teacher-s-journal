@@ -7,7 +7,7 @@
     <v-alert type="info" variant="tonal" class="mb-6">
       <strong>Формат CSV:</strong> last_name, first_name, group_name, student_id (опционально)
       <br>
-      <strong>Пример:</strong> Петров, Иван, 11-A, P001
+      <strong>Пример:</strong> Петров, Иван, ПМ-1
     </v-alert>
 
     <!-- Drag & Drop зона -->
