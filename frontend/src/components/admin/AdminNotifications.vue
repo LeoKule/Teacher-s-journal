@@ -1,10 +1,7 @@
 <template>
-  <v-card-text class="pa-6">
-    <v-row class="mb-4">
-      <v-col cols="12" class="d-flex align-center justify-space-between flex-wrap gap-2">
-        <h6 class="admin-section-title text-h6 font-weight-bold">Уведомления</h6>
-      </v-col>
-    </v-row>
+  <v-card-text class="pa-0">
+    <h6 class="admin-section-title text-h6 font-weight-bold px-6 pt-2 mb-4">Уведомления</h6>
+    <div class="px-6 pb-6">
 
     <v-tabs v-model="activeTab" color="primary" class="mb-6">
       <v-tab value="send">
@@ -105,7 +102,7 @@
                 <div v-if="form.title" class="mb-4">
                   <div class="text-h6 font-weight-bold">{{ form.title }}</div>
                 </div>
-                <div v-if="form.message" class="text-body-2 mb-4 pa-3 rounded-lg bg-surface-variant">
+                <div v-if="form.message" class="text-body-2 mb-4 pa-3 rounded-lg border">
                   {{ form.message }}
                 </div>
                 <div v-if="form.recipients.length > 0 || selectAllTeachers" class="mt-4 pt-4 border-t">
@@ -191,7 +188,16 @@
         </div>
       </v-window-item>
     </v-window>
+    </div>
   </v-card-text>
+
+  <v-snackbar v-model="snackbar" color="success" timeout="4000" location="bottom center">
+    <v-icon start>mdi-check-circle</v-icon>
+    {{ snackbarText }}
+    <template #actions>
+      <v-btn variant="text" @click="snackbar = false">Закрыть</v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
@@ -260,6 +266,9 @@ const toggleSelectAll = () => {
   if (selectAllTeachers.value) form.value.recipients = []
 }
 
+const snackbar = ref(false)
+const snackbarText = ref('')
+
 const resetForm = () => {
   form.value = { notificationType: 'announcement', recipients: [], title: '', message: '' }
   selectAllTeachers.value = false
@@ -279,10 +288,8 @@ const sendNotification = async () => {
       message: form.value.message,
       recipient_teacher_ids: recipients
     })
-    sendResult.value = {
-      success: true,
-      message: `Уведомление успешно отправлено ${recipients.length} преподавателям`
-    }
+    snackbarText.value = `Уведомление отправлено ${recipients.length} преподавателям`
+    snackbar.value = true
     resetForm()
   } catch (e) {
     sendResult.value = {
