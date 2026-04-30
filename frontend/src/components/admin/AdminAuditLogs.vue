@@ -39,7 +39,7 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-row no-gutters class="gap-2">
+        <v-row class="ga-2">
           <v-col>
             <v-btn color="primary" block @click="loadLogs" :loading="loading">
               Обновить
