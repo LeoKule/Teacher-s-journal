@@ -14,10 +14,41 @@
           color="success"
           @click="exportToExcel"
           title="Экспорт в Excel"
-          class="mr-2"
         >
           <v-icon>mdi-file-excel</v-icon>
         </v-btn>
+
+        <v-menu v-model="notifMenu" :close-on-content-click="false" width="360">
+          <template #activator="{ props }">
+            <v-btn icon variant="text" v-bind="props" @click="markAsRead">
+              <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
+                <v-icon>mdi-bell</v-icon>
+              </v-badge>
+            </v-btn>
+          </template>
+          <v-card elevation="4" rounded="lg">
+            <v-card-title class="text-body-1 font-weight-bold pa-4 pb-2">Уведомления</v-card-title>
+            <v-divider></v-divider>
+            <v-list v-if="notifications.length" lines="two" max-height="400" style="overflow-y:auto">
+              <v-list-item
+                v-for="n in notifications"
+                :key="n.id"
+                :subtitle="n.message"
+                class="py-3"
+              >
+                <template #title>
+                  <span class="text-body-2 font-weight-bold">{{ n.title }}</span>
+                </template>
+                <template #append>
+                  <span class="text-caption text-medium-emphasis">{{ formatDate(n.created_at) }}</span>
+                </template>
+              </v-list-item>
+            </v-list>
+            <v-card-text v-else class="text-medium-emphasis text-body-2 py-6 text-center">
+              Уведомлений нет
+            </v-card-text>
+          </v-card>
+        </v-menu>
 
         <v-btn color="error" variant="tonal" @click="logout" prepend-icon="mdi-logout">
           Выйти
@@ -247,6 +278,28 @@ const showMsg = (text, color = 'success') => {
   snackbar.value = { show: true, text, color }
 }
 
+// ===== УВЕДОМЛЕНИЯ =====
+const notifications = ref([])
+const notifMenu = ref(false)
+const lastSeen = ref(parseInt(localStorage.getItem('notif_last_seen') || '0'))
+
+const unreadCount = computed(() =>
+  notifications.value.filter(n => new Date(n.created_at).getTime() > lastSeen.value).length
+)
+
+const loadNotifications = async () => {
+  try {
+    const res = await api.get('/notifications/my')
+    notifications.value = res.data
+  } catch {}
+}
+
+const markAsRead = () => {
+  const now = Date.now()
+  localStorage.setItem('notif_last_seen', now.toString())
+  lastSeen.value = now
+}
+
 // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
 onMounted(() => {
   const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
@@ -257,6 +310,7 @@ onMounted(() => {
   if (savedTheme) {
     theme.global.name.value = savedTheme
   }
+  loadNotifications()
 })
 
 // ===== ОПТИМИЗАЦИЯ ПОИСКА ОЦЕНОК =====
