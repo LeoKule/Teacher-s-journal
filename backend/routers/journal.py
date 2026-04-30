@@ -2,6 +2,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
+import json
 import models
 import schemas
 import crud
@@ -217,3 +218,32 @@ def read_daily_journal(
         teacher_id=current_teacher.id,
         target_date=target_date,
     )
+
+
+@router.get("/notifications/my")
+def get_my_notifications(
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Получить уведомления адресованные текущему преподавателю"""
+    all_notifications = (
+        db.query(models.Notification)
+        .order_by(models.Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    result = []
+    for n in all_notifications:
+        try:
+            ids = json.loads(n.recipient_ids)
+            if current_teacher.id in ids:
+                result.append({
+                    "id": n.id,
+                    "notification_type": n.notification_type,
+                    "title": n.title,
+                    "message": n.message,
+                    "created_at": n.created_at.isoformat(),
+                })
+        except Exception:
+            continue
+    return result
