@@ -1,7 +1,10 @@
 <template>
-  <v-app-bar color="primary" dark class="mb-4">
-    <v-toolbar-title class="ml-4">
-       Панель администратора
+  <v-app-bar color="primary" dark>
+    <v-btn v-if="mobile" icon @click="drawerOpen = !drawerOpen">
+      <v-icon>mdi-menu</v-icon>
+    </v-btn>
+    <v-toolbar-title class="ml-2">
+      Панель администратора
     </v-toolbar-title>
     <v-spacer></v-spacer>
     <v-btn icon @click="toggleTheme" class="mr-2">
@@ -15,136 +18,42 @@
     </v-btn>
   </v-app-bar>
 
-  <v-container class="py-4">
-    <v-row>
-      <v-col cols="12">
-        <v-card elevation="2" class="rounded-lg">
-          <v-tabs v-model="activeTab" color="primary">
-            <!-- Вкладка: Статистика -->
-            <v-tab value="statistics">
-              <v-icon start>mdi-chart-bar</v-icon>
-              Статистика
-            </v-tab>
+  <v-navigation-drawer
+    v-model="drawerOpen"
+    :permanent="!mobile"
+    width="230"
+  >
+    <v-list nav density="compact" class="pt-2">
+      <template v-for="section in navSections" :key="section.title">
+        <v-list-subheader class="text-caption font-weight-bold">{{ section.title }}</v-list-subheader>
+        <v-list-item
+          v-for="item in section.items"
+          :key="item.key"
+          :prepend-icon="item.icon"
+          :title="item.label"
+          :value="item.key"
+          :active="activeSection === item.key"
+          color="primary"
+          rounded="lg"
+          @click="navigate(item.key)"
+        ></v-list-item>
+      </template>
+    </v-list>
+  </v-navigation-drawer>
 
-            <!-- Вкладка: Управление преподавателями -->
-            <v-tab value="teachers">
-              <v-icon start>mdi-account-multiple</v-icon>
-              Преподаватели
-            </v-tab>
-
-            <!-- Вкладка: Логи аудита -->
-            <v-tab value="audit">
-              <v-icon start>mdi-clipboard-list</v-icon>
-              Логи аудита
-            </v-tab>
-
-            <!-- Вкладка: Управление группами -->
-            <v-tab value="groups">
-              <v-icon start>mdi-folder-multiple</v-icon>
-              Группы
-            </v-tab>
-
-            <!-- Вкладка: Назначения -->
-            <v-tab value="assignments">
-              <v-icon start>mdi-link-variant</v-icon>
-              Назначения
-            </v-tab>
-
-            <!-- Вкладка: Import студентов -->
-            <v-tab value="student-import">
-              <v-icon start>mdi-file-upload</v-icon>
-              Import студентов
-            </v-tab>
-
-            <!-- Вкладка: Восстановление студентов -->
-            <v-tab value="student-recovery">
-              <v-icon start>mdi-restore</v-icon>
-              Восстановить студентов
-            </v-tab>
-
-            <!-- Вкладка: Аналитика -->
-            <v-tab value="analytics">
-              <v-icon start>mdi-chart-line</v-icon>
-              Аналитика
-            </v-tab>
-
-            <!-- Вкладка: Расписание -->
-            <v-tab value="schedule">
-              <v-icon start>mdi-calendar-clock</v-icon>
-              Расписание
-            </v-tab>
-
-            <!-- Вкладка: Уведомления -->
-            <v-tab value="notifications">
-              <v-icon start>mdi-bell</v-icon>
-              Уведомления
-            </v-tab>
-
-          </v-tabs>
-
-          <v-window v-model="activeTab">
-              <!-- СОДЕРЖИМОЕ: Статистика -->
-              <v-window-item value="statistics">
-                <AdminStatistics />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Преподаватели -->
-              <v-window-item value="teachers">
-                <AdminTeachers />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Логи аудита -->
-              <v-window-item value="audit">
-                <AdminAuditLogs />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Группы -->
-              <v-window-item value="groups">
-                <AdminGroups />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Назначения -->
-              <v-window-item value="assignments">
-                <AdminAssignments />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Import студентов -->
-              <v-window-item value="student-import">
-                <AdminStudentImport />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Восстановление студентов -->
-              <v-window-item value="student-recovery">
-                <AdminStudentRecovery />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Аналитика -->
-              <v-window-item value="analytics">
-                <AdminAnalytics />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Расписание -->
-              <v-window-item value="schedule">
-                <AdminSchedule />
-              </v-window-item>
-
-              <!-- СОДЕРЖИМОЕ: Уведомления -->
-              <v-window-item value="notifications">
-                <AdminNotifications />
-              </v-window-item>
-            </v-window>
-          
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-main :style="!mobile ? { paddingRight: '230px' } : {}">
+    <v-container fluid class="py-4">
+      <v-card elevation="2" class="rounded-lg overflow-hidden">
+        <component :is="currentComponent" />
+      </v-card>
+    </v-container>
+  </v-main>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
-import api from '../api/axios'
+import { useTheme, useDisplay } from 'vuetify'
 import AdminStatistics from '../components/admin/AdminStatistics.vue'
 import AdminTeachers from '../components/admin/AdminTeachers.vue'
 import AdminAuditLogs from '../components/admin/AdminAuditLogs.vue'
@@ -159,39 +68,70 @@ import { clearAuthData } from '../api/authStorage'
 
 const router = useRouter()
 const theme = useTheme()
-const activeTab = ref('statistics')
-watch(activeTab, (tab) => { localStorage.setItem('admin_active_tab', tab) })
+const { mobile } = useDisplay()
+
+const activeSection = ref(localStorage.getItem('admin_active_tab') || 'statistics')
+const drawerOpen = ref(true)
 const isDarkMode = ref(false)
-const currentUser = ref({
-  full_name: '',
-  email: '',
-  role: ''
-})
+const currentUser = ref({ full_name: '', email: '', role: '' })
+
+const navSections = [
+  { title: 'ОБЗОР', items: [
+    { key: 'statistics', icon: 'mdi-chart-bar', label: 'Статистика' },
+    { key: 'analytics', icon: 'mdi-chart-line', label: 'Аналитика' },
+  ]},
+  { title: 'ПОЛЬЗОВАТЕЛИ', items: [
+    { key: 'teachers', icon: 'mdi-account-multiple', label: 'Преподаватели' },
+    { key: 'groups', icon: 'mdi-folder-multiple', label: 'Группы' },
+    { key: 'assignments', icon: 'mdi-link-variant', label: 'Назначения' },
+  ]},
+  { title: 'СТУДЕНТЫ', items: [
+    { key: 'student-import', icon: 'mdi-file-upload', label: 'Импорт студентов' },
+    { key: 'student-recovery', icon: 'mdi-restore', label: 'Восстановить студентов' },
+  ]},
+  { title: 'РАСПИСАНИЕ', items: [
+    { key: 'schedule', icon: 'mdi-calendar-clock', label: 'Расписание' },
+  ]},
+  { title: 'СИСТЕМА', items: [
+    { key: 'audit', icon: 'mdi-clipboard-list', label: 'Логи аудита' },
+    { key: 'notifications', icon: 'mdi-bell', label: 'Уведомления' },
+  ]},
+]
+
+const componentMap = {
+  statistics: AdminStatistics,
+  analytics: AdminAnalytics,
+  teachers: AdminTeachers,
+  groups: AdminGroups,
+  assignments: AdminAssignments,
+  'student-import': AdminStudentImport,
+  'student-recovery': AdminStudentRecovery,
+  schedule: AdminSchedule,
+  audit: AdminAuditLogs,
+  notifications: AdminNotifications,
+}
+
+const currentComponent = computed(() => componentMap[activeSection.value])
+
+const navigate = (key) => {
+  activeSection.value = key
+  localStorage.setItem('admin_active_tab', key)
+  if (mobile.value) drawerOpen.value = false
+}
 
 onMounted(() => {
-  // Восстанавливаем активную вкладку
-  const savedTab = localStorage.getItem('admin_active_tab')
-  if (savedTab) activeTab.value = savedTab
-
-  // Загружаем сохраненное предпочтение темы
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'dark') {
     isDarkMode.value = true
     theme.global.name.value = 'dark'
   }
 
-  // Получаем информацию администратора из localStorage (она была сохранена при логине)
   const fullName = localStorage.getItem('full_name') || sessionStorage.getItem('full_name')
   const email = localStorage.getItem('email') || sessionStorage.getItem('email')
-  
+
   if (fullName) {
-    currentUser.value = {
-      full_name: fullName,
-      email: email || 'admin@school.com',
-      role: 'admin'
-    }
+    currentUser.value = { full_name: fullName, email: email || 'admin@school.com', role: 'admin' }
   } else {
-    // Если данных нет, редиректим на логин
     router.push('/')
   }
 })
