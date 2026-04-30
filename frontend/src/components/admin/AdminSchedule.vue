@@ -1,176 +1,214 @@
 <template>
-  <v-card-text class="pa-6">
-    <v-row class="mb-6">
-      <v-col cols="12">
-        <h6 class="admin-section-title text-h6 font-weight-bold">Расписание занятий</h6>
-      </v-col>
-    </v-row>
-
-    <!-- Шаг 1+2: Преподаватель и назначение -->
-    <v-row class="mb-4">
-      <v-col cols="12" md="5">
-        <v-select
-          v-model="selectedTeacherId"
-          :items="teachers"
-          item-title="full_name"
-          item-value="id"
-          label="Преподаватель"
-          variant="outlined"
-          clearable
-          @update:model-value="onTeacherChange"
-        ></v-select>
-      </v-col>
-      <v-col cols="12" md="7">
-        <v-select
-          v-model="selectedAssignmentId"
-          :items="assignments"
-          :item-title="assignmentLabel"
-          item-value="id"
-          label="Назначение (предмет — группа — период)"
-          variant="outlined"
-          :disabled="!selectedTeacherId"
-          :loading="assignmentsLoading"
-          clearable
-          @update:model-value="onAssignmentChange"
-        ></v-select>
-      </v-col>
-    </v-row>
-
-    <div v-if="selectedAssignmentId">
-      <!-- Шаблоны расписания -->
-      <v-card class="mb-6 rounded-lg" elevation="1">
-        <v-card-title class="d-flex align-center justify-space-between pa-4">
-          <span class="font-weight-bold">Шаблоны расписания</span>
-          <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddTemplateDialog">
-            Добавить слот
-          </v-btn>
-        </v-card-title>
+  <v-card-text class="pa-0">
+    <v-stepper v-model="step" flat>
+      <v-stepper-header>
+        <v-stepper-item :value="1" title="Назначение" :complete="step > 1" color="primary"></v-stepper-item>
         <v-divider></v-divider>
-
-        <v-progress-linear v-if="templatesLoading" indeterminate></v-progress-linear>
-
-        <div v-if="!templatesLoading">
-          <div v-if="templates.length === 0" class="text-center text-medium-emphasis py-8">
-            Нет шаблонов расписания. Добавьте первый слот.
-          </div>
-          <v-table v-else dense>
-            <thead>
-              <tr>
-                <th class="text-left">День недели</th>
-                <th class="text-left">№ урока</th>
-                <th class="text-left">Начало</th>
-                <th class="text-left">Конец</th>
-                <th class="text-left">Аудитория</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="t in templates" :key="t.id">
-                <td class="text-body-2">{{ DAY_NAMES[t.day_of_week] }}</td>
-                <td class="text-body-2">{{ t.lesson_number }}</td>
-                <td class="text-body-2">{{ t.start_time }}</td>
-                <td class="text-body-2">{{ t.end_time }}</td>
-                <td class="text-body-2">{{ t.classroom || '—' }}</td>
-                <td>
-                  <v-btn icon size="small" variant="text" color="error" @click="confirmDeleteTemplate(t)">
-                    <v-icon size="18">mdi-delete</v-icon>
-                  </v-btn>
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
-        </div>
-      </v-card>
-
-      <!-- Генерация уроков -->
-      <v-card class="rounded-lg" elevation="1">
-        <v-card-title class="pa-4 font-weight-bold">Генерация уроков</v-card-title>
+        <v-stepper-item :value="2" title="Шаблоны" :complete="step > 2" color="primary"></v-stepper-item>
         <v-divider></v-divider>
-        <v-card-text class="pa-4">
-          <v-alert v-if="templates.length === 0" type="warning" variant="tonal" class="mb-4">
-            Сначала добавьте шаблоны расписания.
-          </v-alert>
+        <v-stepper-item :value="3" title="Генерация" color="primary"></v-stepper-item>
+      </v-stepper-header>
 
-          <v-row>
-            <v-col cols="12" sm="6">
-              <v-text-field
-                v-model="dateFrom"
-                label="Дата с"
-                type="date"
-                variant="outlined"
-              ></v-text-field>
-            </v-col>
-            <v-col cols="12" sm="6">
-              <v-text-field
-                v-model="dateTo"
-                label="Дата по"
-                type="date"
-                variant="outlined"
-              ></v-text-field>
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <v-col cols="12" class="d-flex gap-2 flex-wrap">
-              <v-btn
-                color="secondary"
-                :loading="previewLoading"
-                :disabled="!dateFrom || !dateTo || templates.length === 0"
-                @click="previewLessons"
-              >
-                <v-icon start>mdi-eye</v-icon>
-                Предпросмотр
-              </v-btn>
+      <v-stepper-window>
+        <!-- Шаг 1: Выбор назначения -->
+        <v-stepper-window-item :value="1">
+          <div class="pa-6">
+            <v-row class="mb-2">
+              <v-col cols="12" md="5">
+                <v-select
+                  v-model="selectedTeacherId"
+                  :items="teachers"
+                  item-title="full_name"
+                  item-value="id"
+                  label="Преподаватель"
+                  variant="outlined"
+                  clearable
+                  @update:model-value="onTeacherChange"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="7">
+                <v-select
+                  v-model="selectedAssignmentId"
+                  :items="assignments"
+                  :item-title="assignmentLabel"
+                  item-value="id"
+                  label="Назначение (предмет — группа — период)"
+                  variant="outlined"
+                  :disabled="!selectedTeacherId"
+                  :loading="assignmentsLoading"
+                  clearable
+                  @update:model-value="onAssignmentChange"
+                ></v-select>
+              </v-col>
+            </v-row>
+            <div class="d-flex justify-end">
               <v-btn
                 color="primary"
-                :loading="generateLoading"
-                :disabled="!dateFrom || !dateTo || templates.length === 0"
-                @click="generateLessons"
+                :disabled="!selectedAssignmentId"
+                @click="step = 2"
               >
-                <v-icon start>mdi-calendar-plus</v-icon>
-                Создать уроки
+                Далее <v-icon end>mdi-arrow-right</v-icon>
               </v-btn>
-            </v-col>
-          </v-row>
-
-          <!-- Результат предпросмотра -->
-          <div v-if="previewResult" class="mt-4">
-            <v-alert type="info" variant="tonal" class="mb-3">
-              Будет создано уроков: <strong>{{ previewResult.would_generate_count }}</strong>
-              <span v-if="previewResult.skipped_count > 0">
-                , пропущено (уже существуют): <strong>{{ previewResult.skipped_count }}</strong>
-              </span>
-            </v-alert>
-            <div v-if="previewResult.lessons.length > 0" class="rounded-lg overflow-hidden border">
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th class="text-left">#</th>
-                    <th class="text-left">Дата</th>
-                    <th class="text-left">День</th>
-                    <th class="text-left">Предмет</th>
-                    <th class="text-left">Группа</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(lesson, idx) in previewResult.lessons" :key="idx">
-                    <td class="text-medium-emphasis text-body-2">{{ idx + 1 }}</td>
-                    <td class="text-body-2">{{ formatDate(lesson.lesson_date) }}</td>
-                    <td class="text-body-2">{{ formatDayOfWeek(lesson.lesson_date) }}</td>
-                    <td class="text-body-2">{{ lesson.subject_name }}</td>
-                    <td class="text-body-2">{{ lesson.group_name }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
             </div>
           </div>
-        </v-card-text>
-      </v-card>
-    </div>
+        </v-stepper-window-item>
 
-    <v-alert v-if="!selectedTeacherId" type="info" variant="tonal" class="mt-4">
-      Выберите преподавателя и назначение для управления расписанием.
-    </v-alert>
+        <!-- Шаг 2: Шаблоны расписания -->
+        <v-stepper-window-item :value="2">
+          <div class="pa-6">
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-h6 font-weight-bold">Шаблоны расписания</span>
+              <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddTemplateDialog">
+                Добавить слот
+              </v-btn>
+            </div>
+
+            <v-progress-linear v-if="templatesLoading" indeterminate class="mb-4"></v-progress-linear>
+
+            <div v-if="!templatesLoading">
+              <div v-if="templates.length === 0" class="text-center text-medium-emphasis py-8">
+                Нет шаблонов расписания. Добавьте первый слот.
+              </div>
+              <div v-else class="rounded-lg overflow-hidden border mb-4">
+                <v-table density="compact">
+                  <thead>
+                    <tr>
+                      <th class="text-left">День недели</th>
+                      <th class="text-left">№ урока</th>
+                      <th class="text-left">Начало</th>
+                      <th class="text-left">Конец</th>
+                      <th class="text-left">Аудитория</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in templates" :key="t.id">
+                      <td class="text-body-2">{{ DAY_NAMES[t.day_of_week] }}</td>
+                      <td class="text-body-2">{{ t.lesson_number }}</td>
+                      <td class="text-body-2">{{ t.start_time }}</td>
+                      <td class="text-body-2">{{ t.end_time }}</td>
+                      <td class="text-body-2">{{ t.classroom || '—' }}</td>
+                      <td>
+                        <v-btn icon size="small" variant="text" color="error" @click="confirmDeleteTemplate(t)">
+                          <v-icon size="18">mdi-delete</v-icon>
+                        </v-btn>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+            </div>
+
+            <div class="d-flex justify-space-between mt-2">
+              <v-btn variant="outlined" @click="step = 1">
+                <v-icon start>mdi-arrow-left</v-icon> Назад
+              </v-btn>
+              <v-btn color="primary" @click="step = 3">
+                Далее <v-icon end>mdi-arrow-right</v-icon>
+              </v-btn>
+            </div>
+          </div>
+        </v-stepper-window-item>
+
+        <!-- Шаг 3: Генерация уроков -->
+        <v-stepper-window-item :value="3">
+          <div class="pa-6">
+            <v-alert v-if="templates.length === 0" type="warning" variant="tonal" class="mb-4">
+              Нет шаблонов расписания. Вернитесь на шаг 2 и добавьте слоты.
+            </v-alert>
+
+            <v-row>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="dateFrom"
+                  label="Дата с"
+                  type="date"
+                  variant="outlined"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="dateTo"
+                  label="Дата по"
+                  type="date"
+                  variant="outlined"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+
+            <v-row class="mb-2">
+              <v-col cols="12" class="d-flex gap-2 flex-wrap">
+                <v-btn
+                  color="secondary"
+                  :loading="previewLoading"
+                  :disabled="!dateFrom || !dateTo || templates.length === 0"
+                  @click="previewLessons"
+                >
+                  <v-icon start>mdi-eye</v-icon>
+                  Предпросмотр
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  :loading="generateLoading"
+                  :disabled="!dateFrom || !dateTo || templates.length === 0"
+                  @click="generateLessons"
+                >
+                  <v-icon start>mdi-calendar-plus</v-icon>
+                  Создать уроки
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <div v-if="previewResult" class="mb-4">
+              <v-alert type="info" variant="tonal" class="mb-3">
+                Будет создано уроков: <strong>{{ previewResult.would_generate_count }}</strong>
+                <span v-if="previewResult.skipped_count > 0">
+                  , пропущено (уже существуют): <strong>{{ previewResult.skipped_count }}</strong>
+                </span>
+              </v-alert>
+              <div v-if="previewResult.lessons.length > 0" class="rounded-lg overflow-hidden border">
+                <v-table density="compact">
+                  <thead>
+                    <tr>
+                      <th class="text-left">#</th>
+                      <th class="text-left">Дата</th>
+                      <th class="text-left">День</th>
+                      <th class="text-left">Предмет</th>
+                      <th class="text-left">Группа</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(lesson, idx) in previewResult.lessons" :key="idx">
+                      <td class="text-medium-emphasis text-body-2">{{ idx + 1 }}</td>
+                      <td class="text-body-2">{{ formatDate(lesson.lesson_date) }}</td>
+                      <td class="text-body-2">{{ formatDayOfWeek(lesson.lesson_date) }}</td>
+                      <td class="text-body-2">{{ lesson.subject_name }}</td>
+                      <td class="text-body-2">{{ lesson.group_name }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+            </div>
+
+            <div class="d-flex justify-start">
+              <v-btn variant="outlined" @click="step = 2">
+                <v-icon start>mdi-arrow-left</v-icon> Назад
+              </v-btn>
+            </div>
+          </div>
+        </v-stepper-window-item>
+      </v-stepper-window>
+    </v-stepper>
+
+    <!-- Алерты -->
+    <div class="px-6 pb-4">
+      <v-alert v-if="success" type="success" variant="tonal" class="mt-2" closable @click:close="success = ''">
+        {{ success }}
+      </v-alert>
+      <v-alert v-if="error" type="error" variant="tonal" class="mt-2" closable @click:close="error = ''">
+        {{ error }}
+      </v-alert>
+    </div>
 
     <!-- Диалог добавления шаблона -->
     <v-dialog v-model="showTemplateDialog" width="440">
@@ -248,13 +286,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <v-alert v-if="success" type="success" variant="tonal" class="mt-4" closable @click:close="success = ''">
-      {{ success }}
-    </v-alert>
-    <v-alert v-if="error" type="error" variant="tonal" class="mt-4" closable @click:close="error = ''">
-      {{ error }}
-    </v-alert>
   </v-card-text>
 </template>
 
@@ -271,6 +302,8 @@ const DAY_OPTIONS = [
   { value: 5, label: 'Пятница' },
   { value: 6, label: 'Суббота' },
 ]
+
+const step = ref(1)
 
 const teachers = ref([])
 const selectedTeacherId = ref(null)
