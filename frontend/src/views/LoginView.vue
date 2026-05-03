@@ -18,8 +18,10 @@
         <v-text-field
           v-model="password"
           label="Пароль"
-          type="password"
+          :type="showPassword ? 'text' : 'password'"
           prepend-inner-icon="mdi-lock-outline"
+          :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+          @click:append-inner="showPassword = !showPassword"
           variant="outlined"
           class="mb-4"
           :rules="passwordRules"
@@ -59,6 +61,7 @@ import { useRouter } from 'vue-router'
 import api from '../api/axios' 
 import { getUserRole, hasUsableSession, storeAuthData } from '../api/authStorage'
 
+const showPassword = ref(false)
 const rememberMe = ref(true)
 const email = ref('')
 const password = ref('')
