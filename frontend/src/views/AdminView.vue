@@ -11,7 +11,7 @@
       <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
     </v-btn>
     <v-chip class="mr-4" variant="outlined" label>
-      {{ currentUser.full_name }}
+      {{ currentUser.role === 'admin' ? 'Администратор' : currentUser.full_name }}
     </v-chip>
     <v-btn icon @click="handleLogout">
       <v-icon>mdi-logout</v-icon>

@@ -3,7 +3,7 @@
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between flex-wrap gap-2">
         <h6 class="admin-section-title text-h6 font-weight-bold">Управление группами</h6>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
           <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
             Создать группу
           </v-btn>
