@@ -82,6 +82,7 @@
       <!-- Таблица студентов -->
       <v-card elevation="1" rounded="lg">
         <v-card-title class="pa-4 pb-2 font-weight-medium">Статистика по студентам</v-card-title>
+        <div style="overflow-x: auto">
         <v-table density="compact" hover>
           <thead>
             <tr>
@@ -112,6 +113,7 @@
             </tr>
           </tbody>
         </v-table>
+        </div>
         <v-alert v-if="!analytics.students.length" type="info" variant="tonal" density="compact" class="ma-3">
           В группе нет студентов
         </v-alert>

@@ -129,6 +129,7 @@
 
     <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
 
+    <div style="overflow-x: auto">
     <v-data-table
       v-if="!loading"
       :headers="headers"
@@ -196,6 +197,7 @@
         </v-menu>
       </template>
     </v-data-table>
+    </div>
 
     <!-- Диалог редактирования преподавателя -->
     <v-dialog v-model="showEditDialog" width="500">

@@ -40,7 +40,7 @@
     <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
 
     <!-- Таблица -->
-    <div v-if="!loading" class="rounded-lg overflow-hidden border">
+    <div v-if="!loading" class="rounded-lg overflow-hidden border" style="overflow-x: auto">
       <v-table dense hover>
         <thead>
           <tr>

@@ -109,11 +109,12 @@
       type="table-thead, table-tbody"
     ></v-skeleton-loader>
 
-    <v-card 
-      v-else-if="selectedSubject" 
-      elevation="1" 
-      class="rounded-lg overflow-hidden mb-6"
+    <v-card
+      v-else-if="selectedSubject"
+      elevation="1"
+      class="rounded-lg mb-6"
     >
+      <div style="overflow-x: auto">
       <v-table hover class="journal-table">
         <thead>
           <tr class="bg-surface-variant">
@@ -147,6 +148,7 @@
           </tr>
         </tbody>
       </v-table>
+      </div>
     </v-card>
 
     <v-alert

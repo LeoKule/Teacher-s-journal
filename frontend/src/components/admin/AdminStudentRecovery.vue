@@ -26,6 +26,7 @@
       ✓ Нет удаленных студентов
     </v-alert>
 
+    <div style="overflow-x: auto">
     <v-data-table
       v-if="!loading && deletedStudents.length > 0"
       :headers="headers"
@@ -33,29 +34,32 @@
       class="rounded-lg"
     >
       <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-1">
           <v-btn
             color="success"
             size="small"
             variant="tonal"
+            icon
+            title="Восстановить"
             @click="restoreStudent(item.id)"
             :loading="restoring === item.id"
           >
-            <v-icon start>mdi-restore</v-icon>
-            Восстановить
+            <v-icon>mdi-restore</v-icon>
           </v-btn>
           <v-btn
             color="error"
             size="small"
             variant="outlined"
+            icon
+            title="Удалить навсегда"
             @click="openHardDeleteDialog(item)"
           >
-            <v-icon start>mdi-delete-forever</v-icon>
-            Удалить навсегда
+            <v-icon>mdi-delete-forever</v-icon>
           </v-btn>
         </div>
       </template>
     </v-data-table>
+    </div>
 
     <!-- Диалог подтверждения -->
     <v-dialog v-model="showConfirmDialog" width="400">
@@ -144,7 +148,7 @@ const hardDeleteLoading = ref(false)
 const headers = [
   { title: 'ФИО', key: 'full_name' },
   { title: 'Группа', key: 'group_name' },
-  { title: 'Действия', key: 'actions', sortable: false }
+  { title: 'Действия', key: 'actions', sortable: false, width: '100px' }
 ]
 
 onMounted(async () => {

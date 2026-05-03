@@ -294,3 +294,11 @@ code {
     border-right-color: var(--border);
   }
 }
+
+@media (max-width: 599px) {
+  .v-dialog > .v-overlay__content {
+    max-width: calc(100vw - 32px) !important;
+    width: calc(100vw - 32px) !important;
+    margin: 16px !important;
+  }
+}

@@ -1,6 +1,6 @@
 <template>
   <v-container class="fill-height d-flex align-center justify-center">
-    <v-card width="400" elevation="8" class="pa-5 rounded-lg">
+    <v-card width="400" max-width="100%" elevation="8" class="pa-5 rounded-lg">
       <v-card-title class="text-h5 text-center font-weight-bold mb-4">
         Вход в журнал
       </v-card-title>

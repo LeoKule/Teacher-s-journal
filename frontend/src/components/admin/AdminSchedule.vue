@@ -69,7 +69,7 @@
               <div v-if="templates.length === 0" class="text-center text-medium-emphasis py-8">
                 Нет шаблонов расписания. Добавьте первый слот.
               </div>
-              <div v-else class="rounded-lg overflow-hidden border mb-4">
+              <div v-else class="rounded-lg overflow-hidden border mb-4" style="overflow-x: auto">
                 <v-table density="compact">
                   <thead>
                     <tr>
@@ -166,7 +166,7 @@
                   , пропущено (уже существуют): <strong>{{ previewResult.skipped_count }}</strong>
                 </span>
               </v-alert>
-              <div v-if="previewResult.lessons.length > 0" class="rounded-lg overflow-hidden border">
+              <div v-if="previewResult.lessons.length > 0" class="rounded-lg overflow-hidden border" style="overflow-x: auto">
                 <v-table density="compact">
                   <thead>
                     <tr>
