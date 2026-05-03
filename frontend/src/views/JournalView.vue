@@ -14,6 +14,7 @@
           color="success"
           @click="exportToExcel"
           title="Экспорт в Excel"
+          :disabled="!selectedSubject || lessons.length === 0"
         >
           <v-icon>mdi-file-excel</v-icon>
         </v-btn>
@@ -484,25 +485,32 @@ const logout = () => {
 }
 
 const exportToExcel = () => {
-  // 1. Создаем заголовки (Студент + даты уроков)
+  const groupObj = groups.value.find(g => g.id === selectedGroup.value)
+  const subjectObj = subjects.value.find(s => s.id === selectedSubject.value)
+  const groupName = groupObj?.group_name || String(selectedGroup.value)
+  const subjectName = subjectObj?.name || ''
+
+  const metaRows = [
+    [`Курс: ${selectedCourse.value}`],
+    [`Группа: ${groupName}`],
+    [`Предмет: ${subjectName}`],
+    [],
+  ]
+
   const headers = ['Студент', ...lessons.value.map(l => formatDate(l.lesson_date))]
-  
-  // 2. Собираем данные: Имя студента + его оценки
+
   const rows = students.value.map(student => {
-    const studentGrades = lessons.value.map(lesson => {
-      return getGrade(student.id, lesson.id) || '' // Оценка или пусто, если её нет
-    })
+    const studentGrades = lessons.value.map(lesson => getGrade(student.id, lesson.id) || '')
     return [student.full_name, ...studentGrades]
   })
 
-  // 3. Формируем таблицу для Excel
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  const worksheet = XLSX.utils.aoa_to_sheet([...metaRows, headers, ...rows])
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Успеваемость")
+  XLSX.utils.book_append_sheet(workbook, worksheet, groupName.slice(0, 31))
 
-  // 4. Генерируем название файла с текущей датой и скачиваем
   const dateStr = new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')
-  XLSX.writeFile(workbook, `Journal_${selectedGroup.value}_${dateStr}.xlsx`)
+  const safeName = `${groupName}_${subjectName}`.replace(/\s+/g, '_')
+  XLSX.writeFile(workbook, `Журнал_${safeName}_${dateStr}.xlsx`)
 }
 
 // Умный обработчик ошибок API
