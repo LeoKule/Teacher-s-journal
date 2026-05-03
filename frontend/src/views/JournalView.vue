@@ -500,7 +500,12 @@ const exportToExcel = () => {
   const headers = ['Студент', ...lessons.value.map(l => formatDate(l.lesson_date))]
 
   const rows = students.value.map(student => {
-    const studentGrades = lessons.value.map(lesson => getGrade(student.id, lesson.id) || '')
+    const studentGrades = lessons.value.map(lesson => {
+      const grade = getGrade(student.id, lesson.id)
+      const comment = getComment(student.id, lesson.id)
+      if (!grade) return ''
+      return comment ? `${grade} (${comment})` : String(grade)
+    })
     return [student.full_name, ...studentGrades]
   })
 
