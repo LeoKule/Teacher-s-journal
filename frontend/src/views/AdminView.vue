@@ -10,7 +10,7 @@
     <v-btn icon @click="toggleTheme" class="mr-2">
       <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
     </v-btn>
-    <v-chip class="mr-4" variant="outlined" label>
+    <v-chip v-if="!mobile" class="mr-4" variant="outlined" label>
       {{ currentUser.role === 'admin' ? 'Администратор' : currentUser.full_name }}
     </v-chip>
     <v-btn icon @click="handleLogout">
