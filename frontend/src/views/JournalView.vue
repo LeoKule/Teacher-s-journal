@@ -1,9 +1,9 @@
 <template>
   <v-container>
-    <div class="d-flex justify-space-between align-center mb-5 mt-5">
-      <h1 class="text-h4 font-weight-bold">Журнал преподавателя</h1>
-      
-      <div class="d-flex align-center gap-4">
+    <div class="d-flex flex-wrap justify-space-between align-center mb-4 mt-4 gap-2">
+      <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
+
+      <div class="d-flex align-center gap-2">
         <v-btn icon variant="text" @click="toggleTheme">
           <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
         </v-btn>
