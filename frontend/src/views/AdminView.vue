@@ -71,7 +71,7 @@ const theme = useTheme()
 const { mobile } = useDisplay()
 
 const activeSection = ref(localStorage.getItem('admin_active_tab') || 'statistics')
-const drawerOpen = ref(true)
+const drawerOpen = ref(false)
 const isDarkMode = ref(false)
 const currentUser = ref({ full_name: '', email: '', role: '' })
 
