@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid class="px-3">
     <div class="d-flex flex-wrap justify-space-between align-center mb-4 mt-4 gap-2">
       <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
 
