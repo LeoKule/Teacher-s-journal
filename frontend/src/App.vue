@@ -14,6 +14,8 @@ let observer = null
 const setupInput = (input) => {
   if (input.dataset.nkb) return
   input.dataset.nkb = '1'
+  input.setAttribute('readonly', '')
+  input.setAttribute('inputmode', 'none')
   input.focus = () => {}
 }
 
@@ -31,3 +33,9 @@ onUnmounted(() => {
   observer?.disconnect()
 })
 </script>
+
+<style>
+.v-select:not(.v-autocomplete) input {
+  pointer-events: none !important;
+}
+</style>
