@@ -11,14 +11,22 @@ import { onMounted, onUnmounted } from 'vue'
 
 let observer = null
 
+const setupInput = (input) => {
+  if (input.dataset.nkb) return
+  input.dataset.nkb = '1'
+  input.setAttribute('inputmode', 'none')
+  input.addEventListener('focus', function () {
+    window.requestAnimationFrame(() => this.blur())
+  })
+}
+
+const applyToAll = () => {
+  document.querySelectorAll('.v-select input').forEach(setupInput)
+}
+
 onMounted(() => {
-  const applyInputMode = () => {
-    document.querySelectorAll('.v-select input:not([inputmode])').forEach(input => {
-      input.setAttribute('inputmode', 'none')
-    })
-  }
-  applyInputMode()
-  observer = new MutationObserver(applyInputMode)
+  applyToAll()
+  observer = new MutationObserver(applyToAll)
   observer.observe(document.body, { childList: true, subtree: true })
 })
 
