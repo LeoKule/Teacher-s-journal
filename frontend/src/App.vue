@@ -14,10 +14,7 @@ let observer = null
 const setupInput = (input) => {
   if (input.dataset.nkb) return
   input.dataset.nkb = '1'
-  input.setAttribute('inputmode', 'none')
-  input.addEventListener('focus', function () {
-    window.requestAnimationFrame(() => this.blur())
-  })
+  input.focus = () => {}
 }
 
 const applyToAll = () => {
