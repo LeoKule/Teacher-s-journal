@@ -137,7 +137,7 @@
             </v-row>
 
             <v-row class="mb-2">
-              <v-col cols="12" class="d-flex gap-6 flex-wrap">
+              <v-col cols="12" class="d-flex flex-wrap" style="gap: 16px">
                 <v-btn
                   color="secondary"
                   :loading="previewLoading"
