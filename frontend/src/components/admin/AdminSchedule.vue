@@ -137,7 +137,7 @@
             </v-row>
 
             <v-row class="mb-2">
-              <v-col cols="12" class="d-flex gap-2 flex-wrap">
+              <v-col cols="12" class="d-flex gap-4 flex-wrap">
                 <v-btn
                   color="secondary"
                   :loading="previewLoading"
@@ -154,7 +154,7 @@
                   @click="generateLessons"
                 >
                   <v-icon start>mdi-calendar-plus</v-icon>
-                  Создать уроки
+                  Создать пары
                 </v-btn>
               </v-col>
             </v-row>
@@ -267,6 +267,21 @@
       </v-card>
     </v-dialog>
 
+    <!-- Диалог успешной генерации -->
+    <v-dialog v-model="showSuccessDialog" width="380" persistent>
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold text-center">Расписание создано!</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-6 text-center">
+          <v-icon color="success" size="56" class="mb-4">mdi-check-circle</v-icon>
+          <p class="text-body-1">{{ successMessage }}</p>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-center">
+          <v-btn color="primary" size="large" @click="resetAll">Отлично!</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Диалог подтверждения удаления шаблона -->
     <v-dialog v-model="showDeleteTemplateDialog" width="400">
       <v-card class="rounded-lg" elevation="4">
@@ -332,6 +347,8 @@ const deletingTemplate = ref(null)
 
 const success = ref('')
 const error = ref('')
+const showSuccessDialog = ref(false)
+const successMessage = ref('')
 
 const assignmentLabel = (a) => `${a.subject.name} — ${a.group.group_name} (${a.academic_period.name})`
 
@@ -460,13 +477,30 @@ const generateLessons = async () => {
       date_to: dateTo.value,
     })
     const skipped = res.data.skipped_count > 0 ? `, пропущено: ${res.data.skipped_count}` : ''
-    success.value = `Создано ${res.data.generated_count} уроков${skipped}`
+    successMessage.value = `Создано ${res.data.generated_count} пар${skipped}`
+    showSuccessDialog.value = true
     previewResult.value = null
   } catch (err) {
     error.value = err.response?.data?.detail || 'Ошибка при генерации'
   } finally {
     generateLoading.value = false
   }
+}
+
+const resetAll = () => {
+  step.value = 1
+  selectedTeacherId.value = null
+  selectedAssignmentId.value = null
+  selectedAssignment.value = null
+  assignments.value = []
+  templates.value = []
+  dateFrom.value = ''
+  dateTo.value = ''
+  previewResult.value = null
+  successMessage.value = ''
+  showSuccessDialog.value = false
+  success.value = ''
+  error.value = ''
 }
 
 const formatDate = (d) => {
