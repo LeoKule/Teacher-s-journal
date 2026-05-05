@@ -1,4 +1,13 @@
 <template>
+  <v-btn
+    icon
+    @click="toggleTheme"
+    style="position: fixed; top: 12px; left: 12px; z-index: 100;"
+    variant="text"
+  >
+    <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+  </v-btn>
+
   <v-container class="fill-height d-flex align-center justify-center">
     <v-card width="400" max-width="100%" elevation="8" class="pa-5 rounded-lg">
       <v-card-title class="text-h5 text-center font-weight-bold mb-4">
@@ -58,8 +67,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../api/axios' 
+import { useTheme } from 'vuetify'
+import api from '../api/axios'
 import { getUserRole, hasUsableSession, storeAuthData } from '../api/authStorage'
+
+const theme = useTheme()
+const isDarkMode = ref(false)
+
+const toggleTheme = () => {
+  isDarkMode.value = !isDarkMode.value
+  const newTheme = isDarkMode.value ? 'dark' : 'light'
+  theme.global.name.value = newTheme
+  localStorage.setItem('theme', newTheme)
+}
 
 const showPassword = ref(false)
 const rememberMe = ref(true)
@@ -79,13 +99,15 @@ const passwordRules = [
   v => v.length >= 8 || 'Минимум 8 символов',
 ]
 
-// АВТОМАТИЧЕСКИЙ ВХОД
 onMounted(() => {
-  // Проверяем, есть ли уже сохраненный токен
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') {
+    isDarkMode.value = true
+    theme.global.name.value = 'dark'
+  }
+
   if (hasUsableSession()) {
-    // Получаем роль пользователя
     const userRole = getUserRole()
-    // Если токен найден, перенаправляем в зависимости от роли
     if (userRole === 'admin') {
       router.push('/admin')
     } else {
