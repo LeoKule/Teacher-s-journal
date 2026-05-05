@@ -22,7 +22,9 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      network: host
 
   phpmyadmin:
     image: phpmyadmin:latest
