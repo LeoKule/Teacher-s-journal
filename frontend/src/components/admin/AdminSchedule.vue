@@ -137,7 +137,7 @@
             </v-row>
 
             <v-row class="mb-2">
-              <v-col cols="12" class="d-flex gap-4 flex-wrap">
+              <v-col cols="12" class="d-flex gap-6 flex-wrap">
                 <v-btn
                   color="secondary"
                   :loading="previewLoading"
@@ -190,7 +190,7 @@
               </div>
             </div>
 
-            <div class="d-flex justify-start">
+            <div class="d-flex justify-start mt-4">
               <v-btn variant="outlined" @click="step = 2">
                 <v-icon start>mdi-arrow-left</v-icon> Назад
               </v-btn>
