@@ -12,6 +12,16 @@ import '@mdi/font/css/materialdesignicons.css'
 const vuetify = createVuetify({
   components,
   directives,
+  defaults: {
+    VCard: { rounded: 'lg' },
+    VBtn: { rounded: 'md' },
+    VAlert: { rounded: 'lg' },
+    VChip: { rounded: 'md' },
+    VSheet: { rounded: 'lg' },
+    VTextField: { variant: 'outlined' },
+    VSelect: { variant: 'outlined' },
+    VTextarea: { variant: 'outlined' },
+  },
   theme: {
     defaultTheme: 'light',
     themes: {

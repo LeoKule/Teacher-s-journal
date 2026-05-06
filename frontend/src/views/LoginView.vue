@@ -1,67 +1,72 @@
 <template>
-  <v-btn
-    icon
-    @click="toggleTheme"
-    style="position: fixed; top: 12px; left: 12px; z-index: 100;"
-    variant="text"
-  >
-    <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
-  </v-btn>
+  <div class="login-bg">
+    <v-btn
+      icon
+      @click="toggleTheme"
+      style="position: fixed; top: 12px; left: 12px; z-index: 100;"
+      variant="tonal"
+      size="small"
+    >
+      <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+    </v-btn>
 
-  <v-container class="fill-height d-flex align-center justify-center">
-    <v-card width="400" max-width="100%" elevation="8" class="pa-5 rounded-lg">
-      <v-card-title class="text-h5 text-center font-weight-bold mb-4">
-        Вход в журнал
-      </v-card-title>
+    <v-container class="fill-height d-flex align-center justify-center">
+      <v-card width="420" max-width="100%" elevation="0" class="pa-7 rounded-xl login-card">
+        <div class="text-center mb-6">
+          <v-icon size="48" color="indigo-darken-2">mdi-school</v-icon>
+          <h1 class="text-h5 font-weight-bold mt-3 mb-1">Журнал преподавателя</h1>
+          <p class="text-body-2 text-medium-emphasis">Войдите в аккаунт</p>
+        </div>
 
-      <v-form ref="loginForm" @submit.prevent="handleLogin">
-        <v-text-field
-          v-model="email"
-          label="Email"
-          prepend-inner-icon="mdi-email-outline"
-          variant="outlined"
-          class="mb-2"
-          :rules="emailRules"
-        ></v-text-field>
+        <v-form ref="loginForm" @submit.prevent="handleLogin">
+          <v-text-field
+            v-model="email"
+            label="Email"
+            prepend-inner-icon="mdi-email-outline"
+            class="mb-2"
+            :rules="emailRules"
+          ></v-text-field>
 
-        <v-text-field
-          v-model="password"
-          label="Пароль"
-          :type="showPassword ? 'text' : 'password'"
-          prepend-inner-icon="mdi-lock-outline"
-          :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-          @click:append-inner="showPassword = !showPassword"
-          variant="outlined"
-          class="mb-4"
-          :rules="passwordRules"
-        ></v-text-field>
+          <v-text-field
+            v-model="password"
+            label="Пароль"
+            :type="showPassword ? 'text' : 'password'"
+            prepend-inner-icon="mdi-lock-outline"
+            :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+            @click:append-inner="showPassword = !showPassword"
+            class="mb-4"
+            :rules="passwordRules"
+          ></v-text-field>
 
-        <v-checkbox
-          v-model="rememberMe"
-          label="Запомнить меня"
-          color="indigo-darken-2"
-          density="compact"
-          hide-details
-          class="mb-4"
-        ></v-checkbox>
+          <v-checkbox
+            v-model="rememberMe"
+            label="Запомнить меня"
+            color="indigo-darken-2"
+            density="compact"
+            hide-details
+            class="mb-4"
+          ></v-checkbox>
 
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4" density="compact">
-          {{ error }}
-        </v-alert>
+          <v-alert v-if="error" type="error" variant="tonal" class="mb-4" density="compact">
+            {{ error }}
+          </v-alert>
 
-        <v-btn
-          type="submit"
-          color="indigo-darken-2"
-          block
-          size="large"
-          :loading="loading"
-          :disabled="!email || !password"
-        >
-          Войти
-        </v-btn>
-      </v-form>
-    </v-card>
-  </v-container>
+          <v-btn
+            type="submit"
+            color="indigo-darken-2"
+            block
+            size="large"
+            :loading="loading"
+            :disabled="!email || !password"
+            class="text-none font-weight-bold"
+            style="letter-spacing: 0.3px;"
+          >
+            Войти
+          </v-btn>
+        </v-form>
+      </v-card>
+    </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -119,14 +124,12 @@ onMounted(() => {
 const handleLogin = async () => {
   loading.value = true
   error.value = ''
-  
-  // Собираем данные в формате Form Data, как того требует FastAPI OAuth2
+
   const formData = new URLSearchParams()
   formData.append('username', email.value)
   formData.append('password', password.value)
 
   try {
-    // Бэк ставит httpOnly cookies (access, refresh, csrf). В теле — только метаданные.
     const response = await api.post('/token', formData)
     const { user_role } = response.data
 
@@ -148,3 +151,34 @@ const handleLogin = async () => {
   }
 }
 </script>
+
+<style scoped>
+.login-bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow-y: auto;
+}
+
+:global(.v-theme--dark) .login-bg {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #831843 100%);
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+:global(.v-theme--dark) .login-card {
+  background: rgba(30, 30, 40, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+</style>
