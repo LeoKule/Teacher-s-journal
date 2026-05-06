@@ -1,5 +1,5 @@
 <template>
-  <div class="login-bg">
+  <div class="login-bg" :class="{ 'login-bg--dark': isDarkMode }">
     <v-btn
       icon
       @click="toggleTheme"
@@ -11,7 +11,13 @@
     </v-btn>
 
     <v-container class="fill-height d-flex align-center justify-center">
-      <v-card width="420" max-width="100%" elevation="0" class="pa-7 rounded-xl login-card">
+      <v-card
+        width="420"
+        max-width="100%"
+        elevation="0"
+        class="pa-7 rounded-xl login-card"
+        :class="{ 'login-card--dark': isDarkMode }"
+      >
         <div class="text-center mb-6">
           <v-icon size="48" color="indigo-darken-2">mdi-school</v-icon>
           <h1 class="text-h5 font-weight-bold mt-3 mb-1">Журнал преподавателя</h1>
@@ -158,9 +164,10 @@ const handleLogin = async () => {
   inset: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   overflow-y: auto;
+  transition: background 0.4s ease;
 }
 
-:global(.v-theme--dark) .login-bg {
+.login-bg--dark {
   background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #831843 100%);
 }
 
@@ -174,7 +181,7 @@ const handleLogin = async () => {
     0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-:global(.v-theme--dark) .login-card {
+.login-card--dark {
   background: rgba(30, 30, 40, 0.75) !important;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow:
