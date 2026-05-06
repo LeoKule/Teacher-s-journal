@@ -690,6 +690,7 @@ def get_lessons(
     teacher_id: int,
     group_id: int | None = None,
     subject_id: int | None = None,
+    academic_period_id: int | None = None,
 ):
     query = (
         db.query(models.Lesson)
@@ -708,6 +709,13 @@ def get_lessons(
         query = query.filter(models.Lesson.group_id == group_id)
     if subject_id is not None:
         query = query.filter(models.Lesson.subject_id == subject_id)
+    if academic_period_id is not None:
+        period = db.query(models.AcademicPeriod).filter_by(id=academic_period_id).first()
+        if period is not None:
+            query = query.filter(
+                models.Lesson.lesson_date >= period.start_date,
+                models.Lesson.lesson_date <= period.end_date,
+            )
     return query.order_by(models.Lesson.lesson_date.desc(), models.Lesson.id.desc()).all()
 
 

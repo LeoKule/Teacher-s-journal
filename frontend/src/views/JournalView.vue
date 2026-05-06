@@ -524,12 +524,14 @@ const onPeriodChange = async () => {
 
 const loadJournal = async () => {
   if (!selectedGroup.value || !selectedSubject.value) return
-  
+
   loading.value = true
-  
+
+  const periodParam = selectedPeriod.value ? `&academic_period_id=${selectedPeriod.value}` : ''
+
   try {
     const [lRes, sRes, gRes] = await Promise.all([
-      api.get(`/lessons/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}`),
+      api.get(`/lessons/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}${periodParam}`),
       api.get(`/students/?group_id=${selectedGroup.value}`),
       api.get(`/grade-records/?group_id=${selectedGroup.value}&subject_id=${selectedSubject.value}`)
     ])

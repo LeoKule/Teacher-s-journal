@@ -223,6 +223,7 @@ def update_subject(
 def read_lessons(
     group_id: int | None = Query(default=None),
     subject_id: int | None = Query(default=None),
+    academic_period_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
@@ -232,6 +233,7 @@ def read_lessons(
         teacher_id=current_teacher.id,
         group_id=group_id,
         subject_id=subject_id,
+        academic_period_id=academic_period_id,
     )
 
 
