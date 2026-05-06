@@ -3,7 +3,7 @@
     <v-row class="mb-6">
       <v-col cols="12" class="d-flex align-center justify-space-between flex-wrap gap-2">
         <h6 class="admin-section-title text-h6 font-weight-bold">Управление группами</h6>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap" style="gap: 16px">
           <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
             Создать группу
           </v-btn>
@@ -223,11 +223,43 @@
                 <span class="text-body-2 text-medium-emphasis mr-3" style="min-width:28px">{{ idx + 1 }}.</span>
               </template>
               <v-list-item-title class="text-body-2">{{ student.full_name }}</v-list-item-title>
+              <template #append>
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  color="error"
+                  title="Удалить в корзину"
+                  @click="confirmSoftDeleteStudent(student)"
+                >
+                  <v-icon size="18">mdi-delete</v-icon>
+                </v-btn>
+              </template>
             </v-list-item>
           </v-list>
         </v-card-text>
         <v-card-actions class="pa-4 justify-end">
           <v-btn variant="outlined" @click="showStudentsDialog = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог подтверждения soft-delete студента -->
+    <v-dialog v-model="showDeleteStudentDialog" width="440">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold">Удалить студента?</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-6">
+          <p>
+            Студент <strong>{{ deletingStudent?.full_name }}</strong> будет перемещён в корзину.
+          </p>
+          <p class="text-body-2 text-medium-emphasis mt-2">
+            Восстановить можно в разделе «Восстановить студентов». Оценки сохранятся.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-end gap-2">
+          <v-btn variant="outlined" @click="showDeleteStudentDialog = false">Отмена</v-btn>
+          <v-btn color="error" :loading="deleteStudentLoading" @click="softDeleteStudent">Удалить</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -270,6 +302,32 @@ const showStudentsDialog = ref(false)
 const viewingGroup = ref(null)
 const groupStudents = ref([])
 const studentsLoading = ref(false)
+
+const showDeleteStudentDialog = ref(false)
+const deletingStudent = ref(null)
+const deleteStudentLoading = ref(false)
+
+const confirmSoftDeleteStudent = (student) => {
+  deletingStudent.value = student
+  showDeleteStudentDialog.value = true
+}
+
+const softDeleteStudent = async () => {
+  if (!deletingStudent.value) return
+  deleteStudentLoading.value = true
+  try {
+    await api.post(`/admin/students/${deletingStudent.value.id}/soft-delete`)
+    groupStudents.value = groupStudents.value.filter(s => s.id !== deletingStudent.value.id)
+    success.value = `Студент ${deletingStudent.value.full_name} перемещён в корзину`
+    showDeleteStudentDialog.value = false
+    deletingStudent.value = null
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Ошибка при удалении студента'
+    showDeleteStudentDialog.value = false
+  } finally {
+    deleteStudentLoading.value = false
+  }
+}
 
 const pluralize = (count, one, few, many) => {
   if (count % 10 === 1 && count % 100 !== 11) return one

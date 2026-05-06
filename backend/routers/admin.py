@@ -555,17 +555,45 @@ def hard_delete_student(
     return {"ok": True}
 
 
+@router.post("/students/{student_id}/soft-delete")
+def soft_delete_student(
+    student_id: int,
+    req: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin)
+):
+    """Перемещает студента в корзину (is_deleted=True), оценки сохраняются."""
+    student = db.query(models.Student).filter_by(id=student_id, is_deleted=False).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Студент не найден или уже удалён")
+    student.is_deleted = True
+    db.commit()
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="soft_delete",
+        entity_type="student",
+        entity_id=student_id,
+        description=f"Студент {student.full_name} перемещён в корзину",
+        ip_address=get_client_ip(req),
+    )
+    return {"ok": True, "message": f"{student.full_name} перемещён в корзину"}
+
+
 # ========== УПРАВЛЕНИЕ НАЗНАЧЕНИЯМИ ==========
 
 @router.get("/assignments/", response_model=List[schemas.TeachingAssignmentWithTeacher])
 def get_assignments(
     teacher_id: Optional[int] = Query(None),
     group_id: Optional[int] = Query(None),
+    academic_period_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Получить все назначения преподавателей"""
-    assignments = crud.get_all_teaching_assignments(db, teacher_id=teacher_id, group_id=group_id)
+    assignments = crud.get_all_teaching_assignments(
+        db, teacher_id=teacher_id, group_id=group_id, academic_period_id=academic_period_id
+    )
     return [
         schemas.TeachingAssignmentWithTeacher(
             id=a.id,

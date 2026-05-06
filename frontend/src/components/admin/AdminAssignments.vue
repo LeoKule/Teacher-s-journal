@@ -11,7 +11,7 @@
 
     <!-- Фильтры -->
     <v-row class="mb-4">
-      <v-col cols="12" sm="6">
+      <v-col cols="12" sm="6" md="4">
         <v-select
           v-model="filterTeacherId"
           :items="teachers"
@@ -23,13 +23,25 @@
           @update:model-value="loadAssignments"
         ></v-select>
       </v-col>
-      <v-col cols="12" sm="6">
+      <v-col cols="12" sm="6" md="4">
         <v-select
           v-model="filterGroupId"
           :items="groups"
           item-title="group_name"
           item-value="id"
           label="Фильтр по группе"
+          variant="outlined"
+          clearable
+          @update:model-value="loadAssignments"
+        ></v-select>
+      </v-col>
+      <v-col cols="12" sm="6" md="4">
+        <v-select
+          v-model="filterPeriodId"
+          :items="periods"
+          item-title="name"
+          item-value="id"
+          label="Фильтр по семестру"
           variant="outlined"
           clearable
           @update:model-value="loadAssignments"
@@ -185,6 +197,7 @@ const success = ref('')
 
 const filterTeacherId = ref(null)
 const filterGroupId = ref(null)
+const filterPeriodId = ref(null)
 
 const showCreateDialog = ref(false)
 const createLoading = ref(false)
@@ -235,6 +248,7 @@ const loadAssignments = async () => {
     const params = {}
     if (filterTeacherId.value) params.teacher_id = filterTeacherId.value
     if (filterGroupId.value) params.group_id = filterGroupId.value
+    if (filterPeriodId.value) params.academic_period_id = filterPeriodId.value
     const res = await api.get('/admin/assignments/', { params })
     assignments.value = res.data
   } catch (err) {

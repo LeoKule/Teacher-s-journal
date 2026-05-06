@@ -19,35 +19,86 @@
           <v-icon>mdi-file-excel</v-icon>
         </v-btn>
 
-        <v-menu v-model="notifMenu" :close-on-content-click="false" width="360">
+        <v-menu v-model="notifMenu" :close-on-content-click="false" width="420">
           <template #activator="{ props }">
-            <v-btn icon variant="text" v-bind="props" @click="markAsRead">
+            <v-btn icon variant="text" v-bind="props">
               <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
                 <v-icon>mdi-bell</v-icon>
               </v-badge>
             </v-btn>
           </template>
           <v-card elevation="4" rounded="lg">
-            <v-card-title class="text-body-1 font-weight-bold pa-4 pb-2">Уведомления</v-card-title>
+            <v-card-title class="d-flex align-center justify-space-between pa-4 pb-2">
+              <span class="text-body-1 font-weight-bold">Уведомления</span>
+              <v-btn v-if="unreadCount > 0" size="small" variant="text" color="primary" @click="markAllRead">
+                Прочитать все
+              </v-btn>
+            </v-card-title>
+
+            <div class="px-3 pb-2">
+              <v-chip-group v-model="filterType" mandatory selected-class="bg-primary text-white">
+                <v-chip value="all" size="small" variant="outlined">Все</v-chip>
+                <v-chip value="announcement" size="small" variant="outlined">Объявления</v-chip>
+                <v-chip value="reminder" size="small" variant="outlined">Напоминания</v-chip>
+                <v-chip value="completion" size="small" variant="outlined">Завершено</v-chip>
+                <v-chip value="technical" size="small" variant="outlined">Техн.</v-chip>
+                <v-chip value="other" size="small" variant="outlined">Прочее</v-chip>
+              </v-chip-group>
+            </div>
             <v-divider></v-divider>
-            <v-list v-if="notifications.length" lines="two" max-height="400" style="overflow-y:auto">
-              <v-list-item
-                v-for="n in notifications"
-                :key="n.id"
-                :subtitle="n.message"
-                class="py-3"
-              >
-                <template #title>
-                  <span class="text-body-2 font-weight-bold">{{ n.title }}</span>
-                </template>
-                <template #append>
-                  <span class="text-caption text-medium-emphasis">{{ formatDate(n.created_at) }}</span>
-                </template>
-              </v-list-item>
-            </v-list>
-            <v-card-text v-else class="text-medium-emphasis text-body-2 py-6 text-center">
-              Уведомлений нет
-            </v-card-text>
+
+            <div v-if="!notifications.length" class="text-center py-8">
+              <v-icon size="48" color="grey-lighten-1">mdi-bell-off-outline</v-icon>
+              <div class="text-medium-emphasis text-body-2 mt-2">Уведомлений нет</div>
+            </div>
+
+            <div v-else-if="groupedVisible.length === 0" class="text-center py-8">
+              <v-icon size="48" color="grey-lighten-1">mdi-filter-off-outline</v-icon>
+              <div class="text-medium-emphasis text-body-2 mt-2">Нет уведомлений по фильтру</div>
+            </div>
+
+            <div v-else style="max-height: 500px; overflow-y: auto">
+              <template v-for="group in groupedVisible" :key="group.label">
+                <v-list-subheader class="text-caption font-weight-bold pl-4">
+                  {{ group.label }}
+                </v-list-subheader>
+                <v-card
+                  v-for="n in group.items"
+                  :key="n.id"
+                  flat
+                  class="mx-3 mb-2 pa-3"
+                  :class="{ 'notif-unread': isUnread(n) }"
+                  variant="tonal"
+                >
+                  <div class="d-flex align-start">
+                    <v-avatar :color="typeMeta(n.notification_type).color" size="36" class="mr-3 flex-shrink-0">
+                      <v-icon color="white" size="20">{{ typeMeta(n.notification_type).icon }}</v-icon>
+                    </v-avatar>
+                    <div class="flex-grow-1" style="min-width: 0">
+                      <div class="d-flex align-center justify-space-between">
+                        <div class="text-body-2 font-weight-bold text-truncate">{{ n.title }}</div>
+                        <v-btn
+                          v-if="isUnread(n)"
+                          icon
+                          size="x-small"
+                          variant="text"
+                          title="Отметить прочитано"
+                          @click="markOneRead(n)"
+                        >
+                          <v-icon size="14">mdi-close</v-icon>
+                        </v-btn>
+                      </div>
+                      <div class="text-body-2 text-medium-emphasis" style="white-space: pre-wrap; word-break: break-word">
+                        {{ n.message }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis mt-1">
+                        {{ formatRelativeTime(n.created_at) }}
+                      </div>
+                    </div>
+                  </div>
+                </v-card>
+              </template>
+            </div>
           </v-card>
         </v-menu>
 
@@ -282,13 +333,65 @@ const showMsg = (text, color = 'success') => {
 }
 
 // ===== УВЕДОМЛЕНИЯ =====
+const NOTIF_TYPE_MAP = {
+  announcement: { icon: 'mdi-bullhorn', color: 'orange' },
+  reminder:     { icon: 'mdi-clock-alert', color: 'warning' },
+  completion:   { icon: 'mdi-check-circle', color: 'success' },
+  technical:    { icon: 'mdi-information', color: 'info' },
+  other:        { icon: 'mdi-bell', color: 'grey' },
+}
+const typeMeta = (t) => NOTIF_TYPE_MAP[t] || NOTIF_TYPE_MAP.other
+
 const notifications = ref([])
 const notifMenu = ref(false)
+const filterType = ref('all')
 const lastSeen = ref(parseInt(localStorage.getItem('notif_last_seen') || '0'))
+const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
+
+const isUnread = (n) =>
+  !readIds.value.includes(n.id) && new Date(n.created_at).getTime() > lastSeen.value
 
 const unreadCount = computed(() =>
-  notifications.value.filter(n => new Date(n.created_at).getTime() > lastSeen.value).length
+  notifications.value.filter(n => isUnread(n)).length
 )
+
+const visibleNotifications = computed(() =>
+  filterType.value === 'all'
+    ? notifications.value
+    : notifications.value.filter(n => n.notification_type === filterType.value)
+)
+
+const groupedVisible = computed(() => {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
+  const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const buckets = { today: [], yesterday: [], week: [], older: [] }
+  for (const n of visibleNotifications.value) {
+    const d = new Date(n.created_at)
+    if (d >= today) buckets.today.push(n)
+    else if (d >= yesterday) buckets.yesterday.push(n)
+    else if (d >= weekAgo) buckets.week.push(n)
+    else buckets.older.push(n)
+  }
+
+  const out = []
+  if (buckets.today.length) out.push({ label: 'Сегодня', items: buckets.today })
+  if (buckets.yesterday.length) out.push({ label: 'Вчера', items: buckets.yesterday })
+  if (buckets.week.length) out.push({ label: 'На этой неделе', items: buckets.week })
+  if (buckets.older.length) out.push({ label: 'Раньше', items: buckets.older })
+  return out
+})
+
+const formatRelativeTime = (iso) => {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diffMs / 60000)
+  if (min < 1) return 'только что'
+  if (min < 60) return `${min} мин назад`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} ч назад`
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+}
 
 const loadNotifications = async () => {
   try {
@@ -297,10 +400,20 @@ const loadNotifications = async () => {
   } catch {}
 }
 
-const markAsRead = () => {
+const markOneRead = (n) => {
+  if (!readIds.value.includes(n.id)) {
+    readIds.value = [...readIds.value, n.id]
+    localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+  }
+}
+
+const markAllRead = () => {
   const now = Date.now()
   localStorage.setItem('notif_last_seen', now.toString())
   lastSeen.value = now
+  const merged = Array.from(new Set([...readIds.value, ...notifications.value.map(n => n.id)]))
+  readIds.value = merged
+  localStorage.setItem('read_notif_ids', JSON.stringify(merged))
 }
 
 // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
@@ -552,6 +665,10 @@ const handleApiError = (err, defaultMessage = "Произошла ошибка")
 </script>
 
 <style scoped>
+.notif-unread {
+  border-left: 3px solid rgb(var(--v-theme-primary)) !important;
+}
+
 .journal-table {
   background: transparent !important;
 }
@@ -579,7 +696,7 @@ thead th.sticky-column {
 
 .grade-btn {
   font-size: 1.05rem;
-  transition: all 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .grade-btn:hover {

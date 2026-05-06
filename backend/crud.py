@@ -631,6 +631,7 @@ def get_all_teaching_assignments(
     db: Session,
     teacher_id: int | None = None,
     group_id: int | None = None,
+    academic_period_id: int | None = None,
 ):
     query = (
         db.query(models.TeachingAssignment)
@@ -645,6 +646,8 @@ def get_all_teaching_assignments(
         query = query.filter(models.TeachingAssignment.teacher_id == teacher_id)
     if group_id is not None:
         query = query.filter(models.TeachingAssignment.group_id == group_id)
+    if academic_period_id is not None:
+        query = query.filter(models.TeachingAssignment.academic_period_id == academic_period_id)
     return query.order_by(models.TeachingAssignment.id.desc()).all()
 
 
