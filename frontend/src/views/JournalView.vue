@@ -305,8 +305,8 @@ const markAsRead = () => {
 
 // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
 onMounted(() => {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-  if (!token) {
+  const role = localStorage.getItem('user_role') || sessionStorage.getItem('user_role')
+  if (!role) {
     router.push('/')
   }
   const savedTheme = localStorage.getItem('theme')
