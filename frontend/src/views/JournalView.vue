@@ -110,7 +110,7 @@
 
     <v-card class="pa-4 mb-6 rounded-lg" elevation="1">
       <v-row>
-        <v-col cols="12" md="4">
+        <v-col cols="12" sm="6" md="3">
           <v-select
             v-model="selectedCourse"
             :items="[1, 2, 3, 4]"
@@ -121,7 +121,7 @@
             @update:model-value="onCourseChange"
           ></v-select>
         </v-col>
-        <v-col cols="12" md="4">
+        <v-col cols="12" sm="6" md="3">
           <v-select
             v-model="selectedGroup"
             :items="groups"
@@ -136,7 +136,22 @@
             @update:model-value="onGroupChange"
           ></v-select>
         </v-col>
-        <v-col cols="12" md="4">
+        <v-col cols="12" sm="6" md="3">
+          <v-select
+            v-model="selectedPeriod"
+            :items="periods"
+            item-title="name"
+            item-value="id"
+            label="Семестр"
+            :disabled="!selectedGroup"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            clearable
+            @update:model-value="onPeriodChange"
+          ></v-select>
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
           <v-select
             v-model="selectedSubject"
             :items="subjects"
@@ -306,9 +321,11 @@ const theme = useTheme()
 
 const selectedCourse = ref(null)
 const selectedGroup = ref(null)
+const selectedPeriod = ref(null)
 const selectedSubject = ref(null)
 
 const groups = ref([])
+const periods = ref([])
 const subjects = ref([])
 const lessons = ref([])
 const students = ref([])
@@ -448,10 +465,11 @@ const toggleTheme = () => {
 
 const onCourseChange = async () => {
   selectedGroup.value = null
+  selectedPeriod.value = null
   selectedSubject.value = null
   groups.value = []
   subjects.value = []
-  
+
   if (!selectedCourse.value) return
   
   loadingGroups.value = true
@@ -465,22 +483,43 @@ const onCourseChange = async () => {
   }
 }
 
-const onGroupChange = async () => {
-  selectedSubject.value = null
-  subjects.value = []
-  
+const loadSubjects = async () => {
   if (!selectedGroup.value) return
-  
   loadingSubjects.value = true
   try {
-    // Исправлен путь: добавляем /by-group/
-    const res = await api.get(`/subjects/by-group/${selectedGroup.value}`)
+    const params = selectedPeriod.value ? { academic_period_id: selectedPeriod.value } : {}
+    const res = await api.get(`/subjects/by-group/${selectedGroup.value}`, { params })
     subjects.value = res.data
   } catch (err) {
     handleApiError(err, "Ошибка загрузки предметов")
   } finally {
     loadingSubjects.value = false
   }
+}
+
+const loadPeriods = async () => {
+  if (periods.value.length) return
+  try {
+    const res = await api.get('/academic-periods/')
+    periods.value = res.data
+  } catch {}
+}
+
+const onGroupChange = async () => {
+  selectedSubject.value = null
+  subjects.value = []
+
+  if (!selectedGroup.value) return
+
+  await loadPeriods()
+  await loadSubjects()
+}
+
+const onPeriodChange = async () => {
+  selectedSubject.value = null
+  subjects.value = []
+  if (!selectedGroup.value) return
+  await loadSubjects()
 }
 
 const loadJournal = async () => {

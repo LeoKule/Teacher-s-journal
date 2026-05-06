@@ -157,26 +157,35 @@ def read_subjects(
 @router.get("/subjects/by-group/{group_id}", response_model=List[schemas.SubjectShort])
 def get_subjects_by_group(
     group_id: int,
+    academic_period_id: int | None = None,
     db: Session = Depends(get_db),
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
-    """Получить предметы, которые преподаватель ведет в группе"""
-    # Проверяем, что группа существует
+    """Получить предметы, которые преподаватель ведёт в группе. Опционально — за конкретный семестр."""
     group = crud.get_group_by_id(db, group_id=group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Группа не найдена")
-    
-    # Проверяем, что преподаватель ведет занятия в этой группе
+
     teacher_groups = crud.get_groups_for_teacher(db, teacher_id=current_teacher.id)
     if not any(g.id == group.id for g in teacher_groups):
         raise HTTPException(status_code=403, detail="Нет доступа к этой группе")
-    
-    assignments = db.query(models.TeachingAssignment).filter(
-        models.TeachingAssignment.group_id == group_id,
-        models.TeachingAssignment.teacher_id == current_teacher.id
-    ).all()
 
-    return [assignment.subject for assignment in assignments]
+    query = db.query(models.TeachingAssignment).filter(
+        models.TeachingAssignment.group_id == group_id,
+        models.TeachingAssignment.teacher_id == current_teacher.id,
+    )
+    if academic_period_id is not None:
+        query = query.filter(models.TeachingAssignment.academic_period_id == academic_period_id)
+    assignments = query.all()
+
+    # Дедупликация по subject.id — один и тот же предмет может вестись в разных семестрах
+    seen = set()
+    unique_subjects = []
+    for a in assignments:
+        if a.subject.id not in seen:
+            seen.add(a.subject.id)
+            unique_subjects.append(a.subject)
+    return unique_subjects
 
 
 @router.post("/subjects/", response_model=schemas.Subject)
