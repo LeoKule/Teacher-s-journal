@@ -555,6 +555,47 @@ def hard_delete_student(
     return {"ok": True}
 
 
+@router.post("/students/", response_model=schemas.Student)
+def create_single_student(
+    data: schemas.StudentCreate,
+    req: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin),
+):
+    """Создать одного студента в группе (быстрое добавление, в обход CSV-импорта)."""
+    full_name = data.full_name.strip()
+    if not full_name:
+        raise HTTPException(status_code=400, detail="ФИО не может быть пустым")
+
+    group = db.query(models.StudentGroup).filter_by(id=data.group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+
+    existing = db.query(models.Student).filter(
+        models.Student.full_name == full_name,
+        models.Student.group_id == data.group_id,
+        models.Student.is_deleted == False,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Студент «{full_name}» уже есть в этой группе")
+
+    student = models.Student(full_name=full_name, group_id=data.group_id, is_deleted=False)
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+
+    crud.create_audit_log(
+        db=db,
+        admin_id=current_admin.id,
+        action="create",
+        entity_type="student",
+        entity_id=student.id,
+        description=f"Добавлен студент {full_name} в группу {group.group_name}",
+        ip_address=get_client_ip(req),
+    )
+    return student
+
+
 @router.post("/students/{student_id}/soft-delete")
 def soft_delete_student(
     student_id: int,

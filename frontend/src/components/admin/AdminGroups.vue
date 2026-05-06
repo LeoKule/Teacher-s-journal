@@ -203,9 +203,18 @@
     <!-- Диалог просмотра студентов группы -->
     <v-dialog v-model="showStudentsDialog" width="560">
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="pa-4 text-h6 font-weight-bold d-flex align-center justify-space-between">
+        <v-card-title class="pa-4 text-h6 font-weight-bold d-flex align-center" style="gap: 12px">
           <span>Студенты группы {{ viewingGroup?.group_name }}</span>
           <v-chip size="small" variant="tonal" color="primary">{{ groupStudents.length }}</v-chip>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            size="small"
+            prepend-icon="mdi-plus"
+            @click="openAddStudentDialog"
+          >
+            Добавить
+          </v-btn>
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text class="pa-0">
@@ -240,6 +249,46 @@
         </v-card-text>
         <v-card-actions class="pa-4 justify-end">
           <v-btn variant="outlined" @click="showStudentsDialog = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог быстрого добавления студента -->
+    <v-dialog v-model="showAddStudentDialog" width="440">
+      <v-card class="rounded-lg" elevation="4">
+        <v-card-title class="pa-4 text-h6 font-weight-bold">
+          Добавить студента в {{ viewingGroup?.group_name }}
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pa-6">
+          <v-text-field
+            v-model="newStudentLastName"
+            label="Фамилия"
+            variant="outlined"
+            autofocus
+            placeholder="Петров"
+            class="mb-3"
+            @keyup.enter="addStudent"
+          ></v-text-field>
+          <v-text-field
+            v-model="newStudentFirstName"
+            label="Имя"
+            variant="outlined"
+            placeholder="Иван"
+            :error-messages="addStudentError"
+            @keyup.enter="addStudent"
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions class="pa-4 justify-end gap-2">
+          <v-btn variant="outlined" @click="showAddStudentDialog = false">Отмена</v-btn>
+          <v-btn
+            color="primary"
+            :loading="addStudentLoading"
+            :disabled="!newStudentLastName.trim() || !newStudentFirstName.trim()"
+            @click="addStudent"
+          >
+            Добавить
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -306,6 +355,44 @@ const studentsLoading = ref(false)
 const showDeleteStudentDialog = ref(false)
 const deletingStudent = ref(null)
 const deleteStudentLoading = ref(false)
+
+const showAddStudentDialog = ref(false)
+const newStudentLastName = ref('')
+const newStudentFirstName = ref('')
+const addStudentLoading = ref(false)
+const addStudentError = ref('')
+
+const openAddStudentDialog = () => {
+  newStudentLastName.value = ''
+  newStudentFirstName.value = ''
+  addStudentError.value = ''
+  showAddStudentDialog.value = true
+}
+
+const addStudent = async () => {
+  const lastName = newStudentLastName.value.trim()
+  const firstName = newStudentFirstName.value.trim()
+  if (!lastName || !firstName || !viewingGroup.value) return
+  // Формат как в bulk-импорте: "Имя Фамилия"
+  const fullName = `${firstName} ${lastName}`
+  addStudentError.value = ''
+  addStudentLoading.value = true
+  try {
+    const res = await api.post('/admin/students/', {
+      full_name: fullName,
+      group_id: viewingGroup.value.id,
+    })
+    groupStudents.value = [...groupStudents.value, res.data].sort((a, b) =>
+      a.full_name.localeCompare(b.full_name, 'ru')
+    )
+    success.value = `Студент ${fullName} добавлен`
+    showAddStudentDialog.value = false
+  } catch (err) {
+    addStudentError.value = err.response?.data?.detail || 'Ошибка при добавлении'
+  } finally {
+    addStudentLoading.value = false
+  }
+}
 
 const confirmSoftDeleteStudent = (student) => {
   deletingStudent.value = student
