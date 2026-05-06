@@ -18,6 +18,17 @@ def get_db():
         db.close()
 
 
+def get_client_ip(request: Request) -> str:
+    """Возвращает реальный IP клиента: учитывает X-Forwarded-For от nginx."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client else "unknown"
+
+
 def get_token_from_request(request: Request) -> str:
     """Достаёт access_token: сначала из httpOnly cookie, fallback на Authorization Bearer."""
     token = request.cookies.get("access_token")

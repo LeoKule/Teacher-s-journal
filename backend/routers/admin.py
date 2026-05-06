@@ -3,7 +3,7 @@
 Только пользователи с ролью 'admin' имеют доступ к этим эндпоинтам.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import models
@@ -11,7 +11,7 @@ import schemas
 import crud
 import logging
 import json
-from routers.dependencies import get_db, get_current_admin
+from routers.dependencies import get_db, get_current_admin, get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.post("/teachers/", response_model=dict)
 def create_teacher(
     teacher_data: schemas.TeacherCreateByAdmin,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -33,9 +34,9 @@ def create_teacher(
     result = crud.create_teacher_by_admin(db, teacher_data)
     if result is None:
         raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
-    
+
     teacher, temp_password = result
-    
+
     # Логируем действие
     crud.create_audit_log(
         db=db,
@@ -44,7 +45,8 @@ def create_teacher(
         entity_type="teacher",
         entity_id=teacher.id,
         description=f"Создан аккаунт преподавателя {teacher.full_name} ({teacher.email})",
-        new_values=f"role={teacher.role}, is_active={teacher.is_active}"
+        new_values=f"role={teacher.role}, is_active={teacher.is_active}",
+        ip_address=get_client_ip(req),
     )
     
     return {
@@ -108,6 +110,7 @@ def get_teacher(
 def update_teacher(
     teacher_id: int,
     teacher_data: schemas.TeacherUpdate,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -115,7 +118,7 @@ def update_teacher(
     teacher = crud.update_teacher_by_admin(db, teacher_id, teacher_data)
     if not teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден или email занят")
-    
+
     # Логируем действие
     crud.create_audit_log(
         db=db,
@@ -124,7 +127,8 @@ def update_teacher(
         entity_type="teacher",
         entity_id=teacher_id,
         description=f"Обновлены данные преподавателя",
-        new_values=str(teacher_data.model_dump(exclude_unset=True))
+        new_values=str(teacher_data.model_dump(exclude_unset=True)),
+        ip_address=get_client_ip(req),
     )
     
     return schemas.TeacherResponse(
@@ -143,17 +147,18 @@ def update_teacher(
 def reset_password(
     teacher_id: int,
     request: schemas.ResetPasswordRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Сброс пароля преподавателя"""
     if request.teacher_id != teacher_id:
         raise HTTPException(status_code=400, detail="ID преподавателя не совпадает")
-    
+
     teacher = crud.reset_teacher_password(db, teacher_id, request.new_password)
     if not teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден")
-    
+
     # Логируем действие
     crud.create_audit_log(
         db=db,
@@ -161,7 +166,8 @@ def reset_password(
         action="reset_password",
         entity_type="teacher",
         entity_id=teacher_id,
-        description=f"Сброс пароля преподавателя {teacher.full_name}"
+        description=f"Сброс пароля преподавателя {teacher.full_name}",
+        ip_address=get_client_ip(req),
     )
     
     return {"message": f"Пароль преподавателя {teacher.full_name} успешно сброшен"}
@@ -171,19 +177,20 @@ def reset_password(
 def toggle_teacher_status(
     teacher_id: int,
     request: schemas.BlockTeacherRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Блокировать/разблокировать преподавателя"""
     if request.teacher_id != teacher_id:
         raise HTTPException(status_code=400, detail="ID преподавателя не совпадает")
-    
+
     teacher = crud.block_teacher(db, teacher_id, request.is_active)
     if not teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден")
-    
+
     status_text = "разблокирован" if request.is_active else "заблокирован"
-    
+
     # Логируем действие
     crud.create_audit_log(
         db=db,
@@ -191,7 +198,8 @@ def toggle_teacher_status(
         action="block_teacher" if not request.is_active else "unblock_teacher",
         entity_type="teacher",
         entity_id=teacher_id,
-        description=f"Преподаватель {teacher.full_name} {status_text}"
+        description=f"Преподаватель {teacher.full_name} {status_text}",
+        ip_address=get_client_ip(req),
     )
     
     return {
@@ -257,15 +265,17 @@ def get_statistics(
 @router.post("/groups/promote-year/", response_model=schemas.GroupPromotionResponse)
 def promote_groups(
     request: schemas.GroupPromotionRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Перевести группы на следующий курс (для начала новый учебный год)"""
     if not request.group_ids:
         raise HTTPException(status_code=400, detail="Список групп пуст")
-    
+
     promoted, failed = crud.promote_groups_to_next_year(db, request.group_ids)
-    
+
+    client_ip = get_client_ip(req)
     # Логируем действие
     for i in range(len(request.group_ids)):
         crud.create_audit_log(
@@ -274,7 +284,8 @@ def promote_groups(
             action="promote_group",
             entity_type="group",
             entity_id=request.group_ids[i],
-            description=f"Группа переведена на следующий курс"
+            description=f"Группа переведена на следующий курс",
+            ip_address=client_ip,
         )
     
     return schemas.GroupPromotionResponse(
@@ -315,6 +326,7 @@ def admin_info(
 @router.post("/students/bulk-import", response_model=schemas.StudentBulkImportResult)
 def bulk_import_students(
     request: schemas.StudentBulkImportRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -431,7 +443,8 @@ def bulk_import_students(
             entity_type="student",
             entity_id=None,
             description=f"Bulk импорт студентов",
-            new_values=f"imported={len(imported_students)}, errors={len(errors)}"
+            new_values=f"imported={len(imported_students)}, errors={len(errors)}",
+            ip_address=get_client_ip(req),
         )
         
         logger.info(f" Успешно импортировано {len(imported_students)} студентов")
@@ -480,18 +493,19 @@ def get_deleted_students(
 @router.post("/students/{student_id}/restore", response_model=schemas.StudentRestoreResponse)
 def restore_student(
     student_id: int,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
     """Восстановить удаленного студента из soft-delete"""
     logger.info(f"Попытка восстановить студента ID={student_id}")
-    
+
     student = crud.restore_student(db, student_id)
-    
+
     if student is None:
         logger.warning(f"Студент ID={student_id} не найден")
         raise HTTPException(status_code=404, detail="Студент не найден")
-    
+
     # Логируем действие
     crud.create_audit_log(
         db=db,
@@ -500,7 +514,8 @@ def restore_student(
         entity_type="student",
         entity_id=student_id,
         description=f"Студент {student.full_name} восстановлен",
-        new_values=f"is_deleted=False"
+        new_values=f"is_deleted=False",
+        ip_address=get_client_ip(req),
     )
     
     logger.info(f" Студент '{student.full_name}' (ID={student_id}) успешно восстановлен")
@@ -516,6 +531,7 @@ def restore_student(
 @router.delete("/students/{student_id}")
 def hard_delete_student(
     student_id: int,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -534,6 +550,7 @@ def hard_delete_student(
         entity_type="student",
         entity_id=student_id,
         description=f"Жёсткое удаление студента {name}",
+        ip_address=get_client_ip(req),
     )
     return {"ok": True}
 
@@ -570,6 +587,7 @@ def get_assignments(
 @router.post("/assignments/", response_model=schemas.TeachingAssignmentWithTeacher)
 def create_assignment(
     data: schemas.TeachingAssignmentAdminCreate,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -613,6 +631,7 @@ def create_assignment(
         entity_type="teaching_assignment",
         entity_id=assignment.id,
         description=f"Назначен {teacher.full_name} → {subject.name} → {group.group_name}",
+        ip_address=get_client_ip(req),
     )
 
     return schemas.TeachingAssignmentWithTeacher(
@@ -633,6 +652,7 @@ def create_assignment(
 @router.delete("/assignments/{assignment_id}")
 def delete_assignment(
     assignment_id: int,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -661,6 +681,7 @@ def delete_assignment(
         entity_type="teaching_assignment",
         entity_id=assignment_id,
         description=desc,
+        ip_address=get_client_ip(req),
     )
     return {"ok": True}
 
@@ -685,6 +706,7 @@ def get_schedule_templates(
 @router.post("/schedule-templates/", response_model=schemas.ScheduleTemplate)
 def create_schedule_template(
     data: schemas.ScheduleTemplateCreate,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -708,6 +730,7 @@ def create_schedule_template(
         entity_type="schedule_template",
         entity_id=template.id,
         description=f"Создан шаблон расписания: день {data.day_of_week}, урок {data.lesson_number}",
+        ip_address=get_client_ip(req),
     )
     return template
 
@@ -715,6 +738,7 @@ def create_schedule_template(
 @router.delete("/schedule-templates/{template_id}")
 def delete_schedule_template(
     template_id: int,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -731,6 +755,7 @@ def delete_schedule_template(
         entity_type="schedule_template",
         entity_id=template_id,
         description="Удалён шаблон расписания",
+        ip_address=get_client_ip(req),
     )
     return {"ok": True}
 
@@ -766,6 +791,7 @@ def admin_preview_lessons(
 @router.post("/lessons/generate/", response_model=schemas.LessonGenerationResponse)
 def admin_generate_lessons(
     payload: schemas.LessonGenerationRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -796,6 +822,7 @@ def admin_generate_lessons(
         entity_type="lesson",
         entity_id=None,
         description=f"Сгенерировано {result['generated_count']} уроков для назначения #{payload.teaching_assignment_id}",
+        ip_address=get_client_ip(req),
     )
     return result
 
@@ -805,6 +832,7 @@ def admin_generate_lessons(
 @router.post("/notifications/send", response_model=schemas.NotificationSendResponse)
 def send_notification(
     notification_request: schemas.NotificationSendRequest,
+    req: Request,
     db: Session = Depends(get_db),
     current_admin: models.Teacher = Depends(get_current_admin)
 ):
@@ -860,7 +888,8 @@ def send_notification(
         entity_type="notification",
         entity_id=notification.id,
         description=f"Отправлено уведомление '{notification_request.title}' типа {notification_request.notification_type}",
-        new_values=f"type={notification_request.notification_type}, recipients={len(recipients)}"
+        new_values=f"type={notification_request.notification_type}, recipients={len(recipients)}",
+        ip_address=get_client_ip(req),
     )
 
     return schemas.NotificationSendResponse(

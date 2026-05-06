@@ -9,7 +9,7 @@ import schemas
 import crud
 import auth
 import logging
-from routers.dependencies import get_db, get_current_teacher, get_token_from_request
+from routers.dependencies import get_db, get_current_teacher, get_token_from_request, get_client_ip
 from collections import defaultdict
 from config import get_settings
 
@@ -27,7 +27,7 @@ LOGIN_ATTEMPT_WINDOW = 60  # окно в секундах
 
 def check_rate_limit(request: Request) -> bool:
     """Проверяет rate limit для входа (5 попыток в минуту с IP)"""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     now = datetime.now(timezone.utc).timestamp()
 
     login_attempts[client_ip] = [
@@ -98,6 +98,8 @@ async def login_for_access_token(
 ):
     """Логин: ставит httpOnly cookies (access, refresh) и JS-readable csrf_token."""
 
+    client_ip = get_client_ip(request)
+
     if not check_rate_limit(request):
         raise HTTPException(
             status_code=429,
@@ -106,7 +108,19 @@ async def login_for_access_token(
 
     user = auth.authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        logger.warning(f"Failed login attempt for email: {form_data.username}")
+        logger.warning(f"Failed login attempt for email: {form_data.username} from {client_ip}")
+        try:
+            crud.create_audit_log(
+                db=db,
+                admin_id=None,
+                action="failed_login",
+                entity_type="auth",
+                description=f"Неудачная попытка входа: {form_data.username}",
+                ip_address=client_ip,
+            )
+        except Exception as log_err:
+            logger.error(f"Failed to write failed_login audit: {log_err}")
+            db.rollback()
         raise HTTPException(status_code=400, detail="Неверный логин или пароль")
 
     access_token = auth.create_access_token(
