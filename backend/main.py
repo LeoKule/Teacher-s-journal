@@ -7,6 +7,7 @@ import models
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from database import SessionLocal
+from middleware.csrf import CSRFMiddleware
 
 # Загружаем конфигурацию
 settings = get_settings()
@@ -30,13 +31,16 @@ app = FastAPI(
 
 # ========== MIDDLEWARE ==========
 
+# CSRF middleware (выполняется ПОСЛЕ CORS — Starlette стек применяет последний добавленный первым)
+app.add_middleware(CSRFMiddleware)
+
 # Настройка CORS из конфигурации
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 
 logger.info(f"CORS настроена для origins: {settings.ALLOWED_ORIGINS}")
