@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     
     # ============= Приложение =============
     DEBUG: bool = False
+    COOKIE_SECURE: bool = True  # False для локальной разработки на http
     
     # ============= CORS =============
     # Для разработки: localhost:5173, 8080, 3000
