@@ -26,17 +26,6 @@ services:
       context: ./frontend
       network: host
 
-  phpmyadmin:
-    image: phpmyadmin:latest
-    environment:
-      PMA_HOST: mysql
-      PMA_USER: ${DATABASE_USER}
-      PMA_PASSWORD: ${DATABASE_PASSWORD}
-      PMA_ABSOLUTE_URI: https://bfujournal.ru/pma/
-    depends_on:
-      mysql:
-        condition: service_healthy
-
   nginx:
     image: nginx:stable-alpine
     ports:
@@ -45,7 +34,6 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./.htpasswd:/etc/nginx/.htpasswd:ro
     depends_on:
       - backend
       - frontend
