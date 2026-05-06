@@ -1,48 +1,57 @@
-import axios from 'axios';
-import { clearAuthData, getAccessToken, updateStoredAccessToken } from './authStorage';
+import axios from 'axios'
+import { clearAuthData, getCsrfToken } from './authStorage'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 const api = axios.create({
-    baseURL: BASE_URL,
-    withCredentials: true // Разрешает отправку кук на сервер
-});
+  baseURL: BASE_URL,
+  withCredentials: true,
+})
 
-// Добавляем токен к каждому запросу
-api.interceptors.request.use(config => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+api.interceptors.request.use((config) => {
+  if (UNSAFE_METHODS.has((config.method || '').toLowerCase())) {
+    const csrf = getCsrfToken()
+    if (csrf) {
+      config.headers['X-CSRF-Token'] = csrf
+    }
   }
   return config
 })
 
-// Перехватываем ошибки от сервера
+// Refresh singleton: один параллельный refresh-запрос на всё приложение
+let refreshPromise = null
+
+const performRefresh = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${BASE_URL}/refresh`, {}, { withCredentials: true })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config
     const status = error.response?.status
 
-    // Если ошибка 401 (Не авторизован) и мы еще не пробовали обновить токен
     if (status === 401 && originalRequest && !originalRequest._isRetry) {
-      originalRequest._isRetry = true;
+      originalRequest._isRetry = true
 
       try {
-        // Пробуем получить новый access_token (кук с refresh отправится автоматически)
-        const response = await axios.post(`${BASE_URL}/refresh`, {}, { withCredentials: true });
-        // Сохраняем новый токен
-        updateStoredAccessToken(response.data.access_token);
-        // Повторяем оригинальный запрос с новым токеном
-        originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
-        return api(originalRequest);
+        await performRefresh()
+        return api(originalRequest)
       } catch (e) {
-        // Если refresh тоже испортился, выкидываем на страницу логина
-        clearAuthData();
-        window.location.href = '/';
+        clearAuthData()
+        window.location.href = '/'
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
 )
-export default api;
+
+export default api
