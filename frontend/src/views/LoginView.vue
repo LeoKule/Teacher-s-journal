@@ -126,14 +126,12 @@ const handleLogin = async () => {
   formData.append('password', password.value)
 
   try {
-    // Отправляем запрос на наш бэкенд
+    // Бэк ставит httpOnly cookies (access, refresh, csrf). В теле — только метаданные.
     const response = await api.post('/token', formData)
-    const { access_token, user_role, user_id, full_name, email: userEmail } = response.data
+    const { user_role } = response.data
 
-    // ЛОГИКА "ЗАПОМНИТЬ МЕНЯ"
     storeAuthData(response.data, rememberMe.value)
 
-    // Перенаправляем в зависимости от роли пользователя
     if (user_role === 'admin') {
       router.push('/admin')
     } else {
