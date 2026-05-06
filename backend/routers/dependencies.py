@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 import jwt
@@ -7,10 +7,6 @@ import schemas
 import crud
 import auth
 from database import SessionLocal
-from fastapi.security import OAuth2PasswordBearer
-
-# Настройка OAuth2
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def get_db():
@@ -22,16 +18,34 @@ def get_db():
         db.close()
 
 
-def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """Проверяет токен и возвращает текущего пользователя"""
+def get_token_from_request(request: Request) -> str:
+    """Достаёт access_token: сначала из httpOnly cookie, fallback на Authorization Bearer."""
+    token = request.cookies.get("access_token")
+    if token:
+        return token
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось подтвердить учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def get_current_teacher(request: Request, db: Session = Depends(get_db)):
+    """Проверяет токен (из cookie или header) и возвращает текущего пользователя"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Не удалось подтвердить учетные данные",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    token = get_token_from_request(request)
+
     # =================== ПРОВЕРКА ЧЕРНОГО СПИСКА ТОКЕНОВ ===================
-    # Проверяем, находится ли токен в черном списке (logout/revocation)
     if auth.is_token_blacklisted(db, token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,8 +65,7 @@ def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depen
     teacher = crud.get_teacher_by_email(db, email=email)
     if teacher is None:
         raise credentials_exception
-    
-    # Проверяем, активен ли учитель
+
     if not teacher.is_active:
         raise HTTPException(status_code=403, detail="Ваш аккаунт заблокирован")
 
