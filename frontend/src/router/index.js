@@ -32,9 +32,9 @@ const router = createRouter({
   routes
 })
 
-// Защита маршрута: проверяем токен в обоих хранилищах
+// Guards смотрят на UI-метаданные в storage. Реальная авторизация — httpOnly cookie на бэке:
+// если пользователь подделает user_role и попадёт на /admin, бэк всё равно вернёт 401/403.
 router.beforeEach((to, from, next) => {
-  // Ищем токен в обоих местах
   const userRole = getUserRole()
   const isAuthenticated = hasUsableSession()
   if (!isAuthenticated) {
@@ -43,11 +43,8 @@ router.beforeEach((to, from, next) => {
   if (to.name !== 'Login' && !isAuthenticated) {
     next({ name: 'Login' })
   } else if (to.meta.requiresAdmin && userRole !== 'admin') {
-    // Если маршрут требует админа, а пользователь не админ
     next({ name: 'Journal' })
   } else if (to.name === 'Login' && isAuthenticated) {
-    // Если пользователь аутентифицирован и попытается перейти на логин,
-    // перенаправляем на нужную страницу в зависимости от роли
     if (userRole === 'admin') {
       next({ name: 'Admin' })
     } else {
