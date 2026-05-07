@@ -3,22 +3,21 @@
     <div class="d-flex flex-wrap justify-space-between align-center mb-4 mt-4 gap-2">
       <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
 
-      <div class="d-flex align-center" style="gap: 4px;">
-        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom" open-delay="400">
+      <div class="d-flex align-center" style="gap: 6px;">
+        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom" content-class="header-tooltip">
           <template #activator="{ props }">
-            <v-btn v-bind="props" icon variant="text" size="small" @click="toggleTheme">
+            <v-btn v-bind="props" icon variant="text" @click="toggleTheme">
               <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
             </v-btn>
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Экспорт в Excel" location="bottom" open-delay="400">
+        <v-tooltip text="Экспорт в Excel" location="bottom" content-class="header-tooltip">
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
               icon
               variant="text"
-              size="small"
               color="success"
               @click="exportToExcel"
               :disabled="!selectedSubject || lessons.length === 0"
@@ -30,9 +29,9 @@
 
         <v-menu v-model="notifMenu" :close-on-content-click="false" width="420">
           <template #activator="{ props }">
-            <v-tooltip text="Уведомления" location="bottom" open-delay="400">
+            <v-tooltip text="Уведомления" location="bottom" content-class="header-tooltip">
               <template #activator="{ props: tooltipProps }">
-                <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text" size="small">
+                <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text">
                   <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
                     <v-icon>mdi-bell</v-icon>
                   </v-badge>
@@ -194,7 +193,7 @@
       elevation="1"
       class="rounded-lg mb-6"
     >
-      <div class="journal-scroll">
+      <div class="journal-scroll" @wheel="onJournalWheel">
         <v-table hover class="journal-table">
           <thead>
             <tr>
@@ -665,6 +664,22 @@ const formatDayOfWeek = (dateStr) => {
   return days[date.getDay()]
 }
 
+// Колесо мыши над журналом: если нет горизонтальной части (обычная мышь) и есть куда скроллить вправо/влево —
+// переводим вертикальный wheel в горизонтальный. Если контейнер уже на краю (scrollLeft = 0 при движении вверх,
+// scrollLeft = max при движении вниз) — отдаём wheel странице, чтобы она прокручивалась естественно.
+const onJournalWheel = (e) => {
+  if (e.shiftKey || e.deltaX !== 0) return
+  const el = e.currentTarget
+  const max = el.scrollWidth - el.clientWidth
+  if (max <= 0) return
+  const goingRight = e.deltaY > 0
+  const atRight = el.scrollLeft >= max - 1
+  const atLeft = el.scrollLeft <= 0
+  if ((goingRight && atRight) || (!goingRight && atLeft)) return
+  e.preventDefault()
+  el.scrollLeft += e.deltaY
+}
+
 const logout = () => {
   clearAuthData()
   router.push('/')
@@ -744,8 +759,25 @@ const handleApiError = (err, defaultMessage = "Произошла ошибка")
 
 .journal-scroll {
   overflow: auto;
-  max-height: calc(100vh - 320px);
+  max-height: calc(100vh - 280px);
   position: relative;
+}
+
+/* Более заметные скроллбары внутри журнала */
+.journal-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.journal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-primary), 0.4);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.journal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-primary), 0.7);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 
 .journal-table {
