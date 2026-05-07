@@ -353,26 +353,3 @@ code {
   scrollbar-color: rgba(125, 125, 125, 0.3) transparent;
 }
 
-/* Контрастный tooltip в шапке журнала (поверх любой темы) */
-.v-overlay-container .v-overlay__content.header-tooltip,
-.v-tooltip > .v-overlay__content.header-tooltip,
-.v-overlay__content.header-tooltip {
-  background-color: #1976D2 !important;
-  background: #1976D2 !important;
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  font-size: 0.8rem !important;
-  letter-spacing: 0.2px !important;
-  padding: 6px 12px !important;
-  border-radius: 6px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
-  opacity: 1 !important;
-}
-
-.v-theme--dark .v-overlay-container .v-overlay__content.header-tooltip,
-.v-theme--dark .v-tooltip > .v-overlay__content.header-tooltip,
-.v-theme--dark .v-overlay__content.header-tooltip {
-  background-color: #6A8FD9 !important;
-  background: #6A8FD9 !important;
-  color: #0a0a0a !important;
-}

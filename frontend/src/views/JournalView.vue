@@ -4,7 +4,7 @@
       <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
 
       <div class="d-flex align-center" style="gap: 6px;">
-        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom" content-class="header-tooltip">
+        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom" content-class="bg-primary text-white font-weight-medium">
           <template #activator="{ props }">
             <v-btn v-bind="props" icon variant="text" @click="toggleTheme">
               <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
@@ -12,7 +12,7 @@
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Экспорт в Excel" location="bottom" content-class="header-tooltip">
+        <v-tooltip text="Экспорт в Excel" location="bottom" content-class="bg-primary text-white font-weight-medium">
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
@@ -29,7 +29,7 @@
 
         <v-menu v-model="notifMenu" :close-on-content-click="false" width="420">
           <template #activator="{ props }">
-            <v-tooltip text="Уведомления" location="bottom" content-class="header-tooltip">
+            <v-tooltip text="Уведомления" location="bottom" content-class="bg-primary text-white font-weight-medium">
               <template #activator="{ props: tooltipProps }">
                 <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text">
                   <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
