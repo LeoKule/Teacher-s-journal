@@ -4,28 +4,40 @@
       <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
 
       <div class="d-flex align-center gap-2">
-        <v-btn icon variant="text" @click="toggleTheme">
-          <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
-        </v-btn>
+        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom">
+          <template #activator="{ props }">
+            <v-btn v-bind="props" icon variant="text" @click="toggleTheme">
+              <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
 
-        <v-btn
-          icon
-          variant="text"
-          color="success"
-          @click="exportToExcel"
-          title="Экспорт в Excel"
-          :disabled="!selectedSubject || lessons.length === 0"
-        >
-          <v-icon>mdi-file-excel</v-icon>
-        </v-btn>
+        <v-tooltip text="Экспорт в Excel" location="bottom">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon
+              variant="text"
+              color="success"
+              @click="exportToExcel"
+              :disabled="!selectedSubject || lessons.length === 0"
+            >
+              <v-icon>mdi-file-excel</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
 
         <v-menu v-model="notifMenu" :close-on-content-click="false" width="420">
           <template #activator="{ props }">
-            <v-btn icon variant="text" v-bind="props">
-              <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
-                <v-icon>mdi-bell</v-icon>
-              </v-badge>
-            </v-btn>
+            <v-tooltip text="Уведомления" location="bottom">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text">
+                  <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
+                    <v-icon>mdi-bell</v-icon>
+                  </v-badge>
+                </v-btn>
+              </template>
+            </v-tooltip>
           </template>
           <v-card elevation="4" rounded="lg">
             <v-card-title class="d-flex align-center justify-space-between pa-4 pb-2">
@@ -115,7 +127,7 @@
             v-model="selectedCourse"
             :items="[1, 2, 3, 4]"
             label="Курс"
-            variant="outlined"
+            prepend-inner-icon="mdi-school-outline"
             density="comfortable"
             hide-details
             @update:model-value="onCourseChange"
@@ -128,9 +140,9 @@
             item-title="group_name"
             item-value="id"
             label="Группа"
+            prepend-inner-icon="mdi-account-group-outline"
             :disabled="!selectedCourse"
             :loading="loadingGroups"
-            variant="outlined"
             density="comfortable"
             hide-details
             @update:model-value="onGroupChange"
@@ -143,8 +155,8 @@
             item-title="name"
             item-value="id"
             label="Семестр"
+            prepend-inner-icon="mdi-calendar-month-outline"
             :disabled="!selectedGroup"
-            variant="outlined"
             density="comfortable"
             hide-details
             clearable
@@ -158,9 +170,9 @@
             item-title="name"
             item-value="id"
             label="Предмет"
+            prepend-inner-icon="mdi-book-open-variant"
             :disabled="!selectedGroup"
             :loading="loadingSubjects"
-            variant="outlined"
             density="comfortable"
             hide-details
             @update:model-value="loadJournal"
@@ -181,51 +193,62 @@
       elevation="1"
       class="rounded-lg mb-6"
     >
-      <div style="overflow-x: auto">
-      <v-table hover class="journal-table">
-        <thead>
-          <tr class="bg-surface-variant">
-            <th class="sticky-column font-weight-medium bg-surface">Студент</th>
-            <th v-for="lesson in lessons" :key="lesson.id" class="text-center font-weight-bold bg-surface">
-              {{ formatDate(lesson.lesson_date) }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="student in students" :key="student.id">
-            <td class="sticky-column font-weight-medium bg-surface">
-              {{ student.full_name }}
-            </td>
-            <td v-for="lesson in lessons" :key="lesson.id" class="text-center">
-              <v-btn 
-                variant="text" 
-                density="comfortable" 
-                :color="getGradeColor(getGrade(student.id, lesson.id))"
-                class="font-weight-bold grade-btn"
-                min-width="40"
-                min-height="40"
-                @click="openEditDialog(student, lesson)"
+      <div class="journal-scroll">
+        <v-table hover class="journal-table">
+          <thead>
+            <tr>
+              <th class="sticky-column sticky-header num-col text-center">№</th>
+              <th class="sticky-column sticky-column--name sticky-header">Студент</th>
+              <th
+                v-for="lesson in lessons"
+                :key="lesson.id"
+                class="text-center sticky-header date-col"
               >
-                {{ getGrade(student.id, lesson.id) || '—' }}
-                <v-icon v-if="getComment(student.id, lesson.id)" size="x-small" class="ml-1">
-                  mdi-comment-text-outline
-                </v-icon>
-              </v-btn>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+                <div class="text-body-2 font-weight-bold">{{ formatDate(lesson.lesson_date) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ formatDayOfWeek(lesson.lesson_date) }}</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(student, idx) in students" :key="student.id" class="journal-row">
+              <td class="sticky-column num-col text-center text-medium-emphasis">{{ idx + 1 }}</td>
+              <td class="sticky-column sticky-column--name font-weight-medium">
+                {{ student.full_name }}
+              </td>
+              <td v-for="lesson in lessons" :key="lesson.id" class="text-center grade-cell">
+                <v-btn
+                  :variant="getGrade(student.id, lesson.id) ? 'flat' : 'text'"
+                  density="comfortable"
+                  :color="getGradeColor(getGrade(student.id, lesson.id))"
+                  class="font-weight-bold grade-btn"
+                  min-width="44"
+                  min-height="40"
+                  rounded="md"
+                  @click="openEditDialog(student, lesson)"
+                >
+                  {{ getGrade(student.id, lesson.id) || '—' }}
+                  <v-icon v-if="getComment(student.id, lesson.id)" size="x-small" class="ml-1">
+                    mdi-comment-text-outline
+                  </v-icon>
+                </v-btn>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
       </div>
     </v-card>
 
-    <v-alert
+    <v-card
       v-else
-      type="info"
-      variant="tonal"
-      class="mt-5"
+      class="text-center pa-10 mt-5 rounded-lg empty-state"
+      elevation="0"
     >
-      Пожалуйста, выберите курс, группу и предмет для отображения журнала.
-    </v-alert>
+      <v-icon size="72" color="primary" class="mb-4 empty-icon">mdi-notebook-outline</v-icon>
+      <div class="text-h6 font-weight-bold mb-2">Журнал не выбран</div>
+      <div class="text-body-2 text-medium-emphasis">
+        Выберите курс, группу, семестр и предмет — таблица появится автоматически.
+      </div>
+    </v-card>
 
     <v-dialog v-model="dialog" max-width="450px">
       <v-card class="rounded-xl pa-2">
@@ -633,6 +656,13 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
 }
 
+const formatDayOfWeek = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
+  return days[date.getDay()]
+}
+
 const logout = () => {
   clearAuthData()
   router.push('/')
@@ -710,52 +740,118 @@ const handleApiError = (err, defaultMessage = "Произошла ошибка")
   border-left: 3px solid rgb(var(--v-theme-primary)) !important;
 }
 
+.journal-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 320px);
+  position: relative;
+}
+
 .journal-table {
   background: transparent !important;
-}
-
-.sticky-column {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  min-width: 220px;
-  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
-}
-
-thead th.sticky-column {
-  z-index: 3;
-  background-color: rgb(var(--v-theme-surface)) !important;
 }
 
 .journal-table :deep(table) {
   background-color: transparent !important;
 }
 
-.journal-table :deep(td:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+/* === Sticky column (студент + №) === */
+.sticky-column {
+  position: sticky;
+  z-index: 2;
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.num-col {
+  left: 0;
+  min-width: 50px;
+  width: 50px;
+}
+
+.sticky-column--name {
+  left: 50px;
+  min-width: 220px;
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+}
+
+.sticky-column--name::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent);
+  pointer-events: none;
+}
+
+/* === Sticky header (даты остаются видимы при вертикальном скролле) === */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: rgb(var(--v-theme-surface-variant)) !important;
+}
+
+thead th.sticky-column.sticky-header {
+  z-index: 3;
+}
+
+.date-col {
+  min-width: 64px;
+  padding: 6px 4px !important;
+}
+
+/* === Zebra-полосы === */
+.journal-table :deep(tbody tr.journal-row:nth-child(even) td) {
+  background-color: rgba(var(--v-theme-on-surface), 0.025);
+}
+
+.journal-table :deep(tbody tr.journal-row:nth-child(even) td.sticky-column) {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  background-image: linear-gradient(rgba(var(--v-theme-on-surface), 0.025), rgba(var(--v-theme-on-surface), 0.025));
+}
+
+/* === Hover на строке === */
+.journal-table :deep(tbody tr.journal-row:hover td) {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.journal-table :deep(tbody tr.journal-row:hover td.sticky-column) {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  background-image: linear-gradient(rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-primary), 0.08));
+}
+
+.grade-cell {
+  padding: 4px !important;
 }
 
 .grade-btn {
-  font-size: 1.05rem;
+  font-size: 1rem;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .grade-btn:hover {
-  transform: scale(1.2); 
-}
-
-.sticky-column::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(to right, rgba(var(--v-theme-on-surface), 0.05), transparent);
-  pointer-events: none;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.journal-table .v-table__wrapper thead th) {
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+}
+
+/* === Empty state === */
+.empty-state {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.04), rgba(var(--v-theme-primary), 0.01));
+  border: 1px dashed rgba(var(--v-theme-primary), 0.2);
+}
+
+.empty-icon {
+  opacity: 0.6;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 </style>
