@@ -3,21 +3,22 @@
     <div class="d-flex flex-wrap justify-space-between align-center mb-4 mt-4 gap-2">
       <h1 class="text-h5 text-sm-h4 font-weight-bold">Журнал преподавателя</h1>
 
-      <div class="d-flex align-center gap-2">
-        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom">
+      <div class="d-flex align-center" style="gap: 4px;">
+        <v-tooltip :text="theme.global.current.value.dark ? 'Светлая тема' : 'Тёмная тема'" location="bottom" open-delay="400">
           <template #activator="{ props }">
-            <v-btn v-bind="props" icon variant="text" @click="toggleTheme">
+            <v-btn v-bind="props" icon variant="text" size="small" @click="toggleTheme">
               <v-icon>{{ theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
             </v-btn>
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Экспорт в Excel" location="bottom">
+        <v-tooltip text="Экспорт в Excel" location="bottom" open-delay="400">
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
               icon
               variant="text"
+              size="small"
               color="success"
               @click="exportToExcel"
               :disabled="!selectedSubject || lessons.length === 0"
@@ -29,9 +30,9 @@
 
         <v-menu v-model="notifMenu" :close-on-content-click="false" width="420">
           <template #activator="{ props }">
-            <v-tooltip text="Уведомления" location="bottom">
+            <v-tooltip text="Уведомления" location="bottom" open-delay="400">
               <template #activator="{ props: tooltipProps }">
-                <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text">
+                <v-btn v-bind="{ ...props, ...tooltipProps }" icon variant="text" size="small">
                   <v-badge :content="unreadCount" :model-value="unreadCount > 0" color="error">
                     <v-icon>mdi-bell</v-icon>
                   </v-badge>
@@ -218,11 +219,12 @@
               <td v-for="lesson in lessons" :key="lesson.id" class="text-center grade-cell">
                 <v-btn
                   :variant="getGrade(student.id, lesson.id) ? 'flat' : 'text'"
-                  density="comfortable"
+                  density="compact"
                   :color="getGradeColor(getGrade(student.id, lesson.id))"
                   class="font-weight-bold grade-btn"
-                  min-width="44"
-                  min-height="40"
+                  size="small"
+                  min-width="34"
+                  min-height="30"
                   rounded="md"
                   @click="openEditDialog(student, lesson)"
                 >
@@ -826,13 +828,14 @@ thead th.sticky-column.sticky-header {
 }
 
 .grade-btn {
-  font-size: 1rem;
+  font-size: 0.875rem;
+  letter-spacing: 0;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .grade-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.journal-table .v-table__wrapper thead th) {
