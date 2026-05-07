@@ -208,7 +208,7 @@ const showDeleteDialog = ref(false)
 const deleteLoading = ref(false)
 const deletingAssignment = ref(null)
 
-const activeTeachers = computed(() => teachers.value.filter(t => t.is_active))
+const activeTeachers = computed(() => teachers.value.filter(t => t.is_active && t.role !== 'admin'))
 
 onMounted(async () => {
   await Promise.all([loadTeachers(), loadGroups(), loadPeriods()])
@@ -218,7 +218,7 @@ onMounted(async () => {
 const loadTeachers = async () => {
   try {
     const res = await api.get('/admin/teachers/')
-    teachers.value = res.data
+    teachers.value = res.data.filter(t => t.role !== 'admin')
   } catch (err) {
     console.error(err)
   }

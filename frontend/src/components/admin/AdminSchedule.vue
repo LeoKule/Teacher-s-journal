@@ -355,7 +355,7 @@ const assignmentLabel = (a) => `${a.subject.name} — ${a.group.group_name} (${a
 onMounted(async () => {
   try {
     const res = await api.get('/admin/teachers/')
-    teachers.value = res.data.filter(t => t.is_active)
+    teachers.value = res.data.filter(t => t.is_active && t.role !== 'admin')
   } catch (err) {
     console.error(err)
   }
