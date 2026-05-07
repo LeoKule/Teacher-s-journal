@@ -354,7 +354,9 @@ code {
 }
 
 /* Контрастный tooltip в шапке журнала (поверх любой темы) */
-.header-tooltip {
+.v-overlay-container .v-overlay__content.header-tooltip,
+.v-tooltip > .v-overlay__content.header-tooltip,
+.v-overlay__content.header-tooltip {
   background-color: #1976D2 !important;
   background: #1976D2 !important;
   color: #ffffff !important;
@@ -367,7 +369,9 @@ code {
   opacity: 1 !important;
 }
 
-.v-theme--dark .header-tooltip {
+.v-theme--dark .v-overlay-container .v-overlay__content.header-tooltip,
+.v-theme--dark .v-tooltip > .v-overlay__content.header-tooltip,
+.v-theme--dark .v-overlay__content.header-tooltip {
   background-color: #6A8FD9 !important;
   background: #6A8FD9 !important;
   color: #0a0a0a !important;
