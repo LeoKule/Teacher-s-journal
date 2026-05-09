@@ -186,9 +186,13 @@
               </v-col>
 
               <v-col v-if="course.groups.length === 0" cols="12">
-                <div class="text-center text-medium-emphasis py-8">
-                  Нет групп на этом курсе
-                </div>
+                <v-card variant="outlined" class="text-center pa-6">
+                  <v-icon size="48" color="grey-lighten-1">mdi-folder-open-outline</v-icon>
+                  <p class="text-medium-emphasis mt-3 mb-2">Нет групп на этом курсе</p>
+                  <v-btn size="small" color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+                    Создать группу
+                  </v-btn>
+                </v-card>
               </v-col>
             </v-row>
           </v-card-text>
@@ -196,7 +200,14 @@
       </v-col>
 
       <v-col v-if="courseGroups.length === 0" cols="12">
-        <v-alert type="info" variant="tonal">Нет групп. Создайте первую группу.</v-alert>
+        <v-card variant="outlined" class="text-center pa-8">
+          <v-icon size="56" color="grey-lighten-1">mdi-folder-multiple-outline</v-icon>
+          <p class="text-h6 font-weight-medium mt-3 mb-1">Групп пока нет</p>
+          <p class="text-body-2 text-medium-emphasis mb-3">Создайте первую группу, чтобы начать работу</p>
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+            Создать первую группу
+          </v-btn>
+        </v-card>
       </v-col>
     </v-row>
 
