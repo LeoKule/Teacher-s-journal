@@ -66,9 +66,30 @@
             <v-progress-linear v-if="templatesLoading" indeterminate class="mb-4"></v-progress-linear>
 
             <div v-if="!templatesLoading">
-              <div v-if="templates.length === 0" class="text-center text-medium-emphasis py-8">
-                Нет шаблонов расписания. Добавьте первый слот.
+              <v-card v-if="templates.length === 0" variant="outlined" class="text-center pa-6 mb-4">
+                <v-icon size="48" color="grey-lighten-1">mdi-calendar-blank-outline</v-icon>
+                <p class="text-medium-emphasis mt-3">Нет шаблонов расписания. Добавьте первый слот.</p>
+              </v-card>
+              <!-- Mobile: карточки -->
+              <div v-else-if="$vuetify.display.smAndDown" class="d-flex flex-column mb-4" style="gap: 8px">
+                <v-card v-for="t in templates" :key="t.id" variant="outlined" class="pa-3">
+                  <div class="d-flex justify-space-between align-start" style="gap: 8px">
+                    <div style="min-width: 0; flex: 1">
+                      <div class="font-weight-bold">{{ DAY_NAMES[t.day_of_week] }}, {{ t.lesson_number }} урок</div>
+                      <div class="text-body-2 text-medium-emphasis mt-1">
+                        {{ t.start_time }} – {{ t.end_time }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        Аудитория: {{ t.classroom || '—' }}
+                      </div>
+                    </div>
+                    <v-btn icon size="small" variant="text" color="error" @click="confirmDeleteTemplate(t)">
+                      <v-icon size="18">mdi-delete</v-icon>
+                    </v-btn>
+                  </div>
+                </v-card>
               </div>
+              <!-- Desktop: таблица -->
               <div v-else class="rounded-lg overflow-hidden border mb-4" style="overflow-x: auto">
                 <v-table density="compact">
                   <thead>
