@@ -19,7 +19,11 @@
       </v-col>
     </v-row>
 
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4"></v-progress-linear>
+    <v-skeleton-loader
+      v-if="loading"
+      type="card-heading, list-item-three-line, table-thead, table-tbody"
+      class="mb-4"
+    ></v-skeleton-loader>
 
     <v-alert v-if="!selectedGroupId && !loading" type="info" variant="tonal" class="mb-4">
       Выберите группу для просмотра аналитики
