@@ -120,7 +120,7 @@
       </div>
     </div>
 
-    <v-card class="pa-4 mb-6 rounded-lg" elevation="1">
+    <v-card v-if="!isMobile" class="pa-4 mb-6 rounded-lg" elevation="1">
       <v-row>
         <v-col cols="12" sm="6" md="3">
           <v-select
@@ -181,6 +181,81 @@
       </v-row>
     </v-card>
 
+    <!-- Мобильные фильтры: свёрнутая карточка с summary -->
+    <v-card v-else class="mb-4 rounded-lg" elevation="1">
+      <v-list-item
+        :title="filtersSummary"
+        :subtitle="filtersExpanded ? 'Тап чтобы свернуть' : 'Тап чтобы изменить'"
+        @click="filtersExpanded = !filtersExpanded"
+      >
+        <template #prepend>
+          <v-icon color="primary">mdi-filter-variant</v-icon>
+        </template>
+        <template #append>
+          <v-icon>{{ filtersExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        </template>
+      </v-list-item>
+      <v-expand-transition>
+        <div v-show="filtersExpanded" class="pa-3 pt-0">
+          <v-select
+            v-model="selectedCourse"
+            :items="[1, 2, 3, 4]"
+            label="Курс"
+            prepend-inner-icon="mdi-school-outline"
+            density="comfortable"
+            variant="outlined"
+            hide-details
+            class="mb-3"
+            @update:model-value="onCourseChange"
+          ></v-select>
+          <v-select
+            v-model="selectedGroup"
+            :items="groups"
+            item-title="group_name"
+            item-value="id"
+            label="Группа"
+            prepend-inner-icon="mdi-account-group-outline"
+            :disabled="!selectedCourse"
+            :loading="loadingGroups"
+            density="comfortable"
+            variant="outlined"
+            hide-details
+            class="mb-3"
+            @update:model-value="onGroupChange"
+          ></v-select>
+          <v-select
+            v-model="selectedPeriod"
+            :items="periods"
+            item-title="name"
+            item-value="id"
+            label="Семестр"
+            prepend-inner-icon="mdi-calendar-month-outline"
+            :disabled="!selectedGroup"
+            density="comfortable"
+            variant="outlined"
+            hide-details
+            clearable
+            class="mb-3"
+            @update:model-value="onPeriodChange"
+          ></v-select>
+          <v-select
+            v-model="selectedSubject"
+            :items="subjects"
+            item-title="name"
+            item-value="id"
+            label="Предмет"
+            prepend-inner-icon="mdi-book-open-variant"
+            :disabled="!selectedGroup"
+            :loading="loadingSubjects"
+            density="comfortable"
+            variant="outlined"
+            hide-details
+            @update:model-value="loadJournal"
+          ></v-select>
+        </div>
+      </v-expand-transition>
+    </v-card>
+
     <v-skeleton-loader
       v-if="loading"
       class="pa-0 mb-6 rounded-lg border"
@@ -189,7 +264,7 @@
     ></v-skeleton-loader>
 
     <v-card
-      v-else-if="selectedSubject"
+      v-else-if="selectedSubject && !isMobile"
       elevation="1"
       class="rounded-lg mb-6"
     >
@@ -239,6 +314,64 @@
       </div>
     </v-card>
 
+    <!-- Мобильный режим: лента дат + список студентов -->
+    <template v-else-if="selectedSubject && isMobile">
+      <div v-if="!lessons.length" class="text-center pa-8 text-medium-emphasis">
+        <v-icon size="48" color="grey-lighten-1">mdi-calendar-blank-outline</v-icon>
+        <div class="mt-3">У этого предмета пока нет уроков</div>
+      </div>
+
+      <template v-else>
+        <!-- Горизонтальная лента дат -->
+        <div ref="dateStripRef" class="date-strip mb-3">
+          <button
+            v-for="lesson in lessons"
+            :key="lesson.id"
+            type="button"
+            class="date-chip"
+            :class="{ 'date-chip--active': selectedLessonMobile?.id === lesson.id }"
+            @click="selectedLessonMobile = lesson"
+          >
+            <div class="date-chip__day">{{ formatDate(lesson.lesson_date) }}</div>
+            <div class="date-chip__weekday">{{ formatDayOfWeek(lesson.lesson_date) }}</div>
+          </button>
+        </div>
+
+        <!-- Список студентов с оценками за выбранный день -->
+        <div v-if="selectedLessonMobile" class="d-flex flex-column mb-6" style="gap: 6px">
+          <v-card
+            v-for="(student, idx) in students"
+            :key="student.id"
+            variant="outlined"
+            class="student-row"
+            @click="openEditDialog(student, selectedLessonMobile)"
+          >
+            <div class="d-flex align-center pa-3" style="gap: 12px">
+              <span class="text-caption text-medium-emphasis" style="min-width: 22px; text-align: right">
+                {{ idx + 1 }}
+              </span>
+              <span class="flex-grow-1 text-body-2 font-weight-medium" style="min-width: 0">
+                {{ student.full_name }}
+              </span>
+              <v-icon
+                v-if="getComment(student.id, selectedLessonMobile.id)"
+                size="16"
+                color="primary"
+              >mdi-comment-text</v-icon>
+              <div
+                v-if="getGrade(student.id, selectedLessonMobile.id)"
+                class="grade-badge"
+                :class="`bg-${getGradeColor(getGrade(student.id, selectedLessonMobile.id))}`"
+              >
+                {{ getGrade(student.id, selectedLessonMobile.id) }}
+              </div>
+              <v-icon v-else color="grey-lighten-1" size="28">mdi-plus-circle-outline</v-icon>
+            </div>
+          </v-card>
+        </div>
+      </template>
+    </template>
+
     <v-card
       v-else
       class="text-center pa-10 mt-5 rounded-lg empty-state"
@@ -251,10 +384,11 @@
       </div>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="450px">
+    <!-- Десктоп: обычный модальный диалог -->
+    <v-dialog v-if="!isMobile" v-model="dialog" max-width="450px">
       <v-card class="rounded-xl pa-2">
         <v-card-title class="text-h5 text-center pt-4">Оценка и отзыв</v-card-title>
-        
+
         <v-card-text>
           <div class="mb-5 text-center text-medium-emphasis">
             <v-chip color="indigo" variant="outlined" size="small" class="mr-2">
@@ -264,7 +398,7 @@
               {{ formatDate(selectedLesson?.lesson_date) }}
             </v-chip>
           </div>
-          
+
           <v-select
             v-model="newGradeValue"
             :items="GRADE_OPTIONS"
@@ -311,6 +445,68 @@
       </v-card>
     </v-dialog>
 
+    <!-- Мобила: bottom sheet с большими кнопками -->
+    <v-bottom-sheet v-else v-model="dialog" inset>
+      <v-card class="rounded-t-xl mobile-grade-sheet">
+        <v-card-title class="pa-4 pb-1 text-body-1 font-weight-bold">
+          {{ selectedStudent?.full_name }}
+        </v-card-title>
+        <v-card-subtitle class="px-4 pb-3 text-body-2">
+          {{ formatDate(selectedLesson?.lesson_date) }} · {{ formatDayOfWeek(selectedLesson?.lesson_date) }}
+        </v-card-subtitle>
+        <v-divider></v-divider>
+        <v-card-text class="pa-4">
+          <div class="d-flex justify-space-between mb-4" style="gap: 8px">
+            <v-btn
+              v-for="opt in GRADE_OPTIONS"
+              :key="opt"
+              :color="getGradeColor(opt)"
+              :variant="newGradeValue === opt ? 'flat' : 'tonal'"
+              size="large"
+              height="56"
+              class="flex-grow-1 grade-pick-btn"
+              @click="newGradeValue = opt"
+            >
+              {{ opt }}
+            </v-btn>
+          </div>
+          <v-textarea
+            v-model="newComment"
+            label="Комментарий (необязательно)"
+            variant="outlined"
+            rows="2"
+            counter
+            maxlength="100"
+            density="compact"
+            hide-details="auto"
+          ></v-textarea>
+        </v-card-text>
+        <v-card-actions class="pa-4 pt-0">
+          <v-btn
+            v-if="selectedGradeId"
+            color="error"
+            variant="text"
+            :loading="deleting"
+            prepend-icon="mdi-delete"
+            @click="deleteGrade"
+          >
+            Удалить
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="dialog = false">Отмена</v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="saving"
+            :disabled="!newGradeValue"
+            @click="saveGrade"
+          >
+            Сохранить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-bottom-sheet>
+
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" rounded="pill">
       {{ snackbar.text }}
       <template v-slot:actions>
@@ -323,8 +519,8 @@
 
 <script setup>
 import * as XLSX from 'xlsx'
-import { useTheme } from 'vuetify'
-import { ref, computed, onMounted } from 'vue'
+import { useTheme, useDisplay } from 'vuetify'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/axios'
 import { clearAuthData } from '../api/authStorage'
@@ -342,6 +538,8 @@ const GRADE_CONFIG = {
 const router = useRouter()
 
 const theme = useTheme()
+const display = useDisplay()
+const isMobile = computed(() => display.mdAndDown.value)
 
 // Инвертированный tooltip: на светлой теме — тёмный, на тёмной — светлый
 const headerTooltipClass = computed(() =>
@@ -374,6 +572,24 @@ const selectedStudent = ref(null)
 const selectedLesson = ref(null)
 const newGradeValue = ref(null)
 const newComment = ref('')
+
+// Мобильный режим
+const selectedLessonMobile = ref(null)
+const filtersExpanded = ref(false)
+const dateStripRef = ref(null)
+
+const filtersSummary = computed(() => {
+  if (!selectedSubject.value) return 'Выберите группу и предмет'
+  const parts = []
+  if (selectedCourse.value) parts.push(`${selectedCourse.value} курс`)
+  const g = groups.value.find(x => x.id === selectedGroup.value)
+  if (g) parts.push(g.group_name)
+  const p = periods.value.find(x => x.id === selectedPeriod.value)
+  if (p) parts.push(p.name)
+  const s = subjects.value.find(x => x.id === selectedSubject.value)
+  if (s) parts.push(s.name)
+  return parts.join(' · ')
+})
 
 const snackbar = ref({ show: false, text: '', color: 'success' })
 const showMsg = (text, color = 'success') => {
@@ -486,6 +702,32 @@ const gradesMap = computed(() => {
     map.set(`${g.student_id}-${g.lesson_id}`, g)
   })
   return map
+})
+
+// При смене списка уроков — выбираем ближайший к сегодня (или последний прошедший)
+watch(lessons, async (newLessons) => {
+  if (!newLessons || !newLessons.length) {
+    selectedLessonMobile.value = null
+    return
+  }
+  const today = new Date().toISOString().slice(0, 10)
+  const upcoming = newLessons.find(l => l.lesson_date >= today)
+  selectedLessonMobile.value = upcoming || newLessons[newLessons.length - 1]
+  await nextTick()
+  const stripEl = dateStripRef.value
+  if (stripEl) {
+    const activeChip = stripEl.querySelector('.date-chip--active')
+    if (activeChip) {
+      activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }
+})
+
+// После выбора предмета на мобиле — авто-свернуть фильтры
+watch(selectedSubject, (val) => {
+  if (val && isMobile.value) {
+    filtersExpanded.value = false
+  }
 })
 
 // Функция переключения
@@ -899,5 +1141,105 @@ thead th.sticky-column.sticky-header {
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+/* === Мобильная лента дат === */
+.date-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 8px;
+  margin: 0 -4px;
+}
+
+.date-strip::-webkit-scrollbar {
+  height: 4px;
+}
+.date-strip::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-primary), 0.3);
+  border-radius: 2px;
+}
+
+.date-chip {
+  flex: 0 0 auto;
+  min-width: 64px;
+  height: 60px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
+  font-family: inherit;
+  padding: 0 10px;
+}
+
+.date-chip:active {
+  transform: scale(0.95);
+}
+
+.date-chip__day {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.date-chip__weekday {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  text-transform: lowercase;
+  line-height: 1;
+}
+
+.date-chip--active {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.35);
+}
+
+.date-chip--active .date-chip__weekday {
+  opacity: 0.9;
+}
+
+/* === Карточка студента в мобильном списке === */
+.student-row {
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.student-row:active {
+  transform: scale(0.99);
+  background-color: rgba(var(--v-theme-primary), 0.06);
+}
+
+/* === Бейдж оценки === */
+.grade-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* === Bottom sheet с оценкой === */
+.mobile-grade-sheet .grade-pick-btn {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  min-width: 0;
 }
 </style>
