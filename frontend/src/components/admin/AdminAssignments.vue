@@ -49,10 +49,48 @@
       </v-col>
     </v-row>
 
-    <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
+    <v-skeleton-loader v-if="loading" type="table-thead, table-tbody" class="mb-4"></v-skeleton-loader>
 
-    <!-- Таблица -->
-    <div v-if="!loading" class="rounded-lg overflow-hidden border" style="overflow-x: auto">
+    <!-- Mobile: карточки -->
+    <div v-else-if="$vuetify.display.smAndDown" class="d-flex flex-column" style="gap: 8px">
+      <v-card v-if="assignments.length === 0" variant="outlined" class="text-center pa-8">
+        <v-icon size="48" color="grey-lighten-1">mdi-link-variant-off</v-icon>
+        <p class="text-medium-emphasis mt-3 mb-2">Назначений ещё нет</p>
+        <v-btn size="small" color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+          Создать первое назначение
+        </v-btn>
+      </v-card>
+      <v-card
+        v-for="a in assignments"
+        :key="a.id"
+        variant="outlined"
+        class="pa-3"
+      >
+        <div class="d-flex justify-space-between align-start" style="gap: 8px">
+          <div style="min-width: 0; flex: 1">
+            <div class="font-weight-bold mb-1">{{ a.teacher_name }}</div>
+            <div class="text-body-2 mb-1">{{ a.subject.name }}</div>
+            <div class="d-flex flex-wrap align-center" style="gap: 6px">
+              <v-chip size="x-small" variant="tonal" color="primary">{{ a.group.group_name }}</v-chip>
+              <span class="text-caption text-medium-emphasis">{{ a.academic_period.name }}</span>
+            </div>
+          </div>
+          <v-btn
+            icon
+            size="small"
+            variant="text"
+            color="error"
+            @click="openDeleteDialog(a)"
+            title="Удалить"
+          >
+            <v-icon size="18">mdi-delete</v-icon>
+          </v-btn>
+        </div>
+      </v-card>
+    </div>
+
+    <!-- Desktop: таблица -->
+    <div v-else class="rounded-lg overflow-hidden border" style="overflow-x: auto">
       <v-table dense hover>
         <thead>
           <tr>
@@ -87,8 +125,14 @@
             </td>
           </tr>
           <tr v-if="assignments.length === 0">
-            <td colspan="5" class="text-center py-6 text-medium-emphasis">
-              Назначений нет. Нажмите "Добавить назначение" чтобы создать первое.
+            <td colspan="5" class="pa-0">
+              <div class="text-center pa-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-link-variant-off</v-icon>
+                <p class="text-medium-emphasis mt-3 mb-2">Назначений ещё нет</p>
+                <v-btn size="small" color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+                  Создать первое назначение
+                </v-btn>
+              </div>
             </td>
           </tr>
         </tbody>
