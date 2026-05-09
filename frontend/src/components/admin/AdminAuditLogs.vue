@@ -54,7 +54,11 @@
       </v-col>
     </v-row>
 
-    <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
+    <v-skeleton-loader
+      v-if="loading"
+      type="table-thead, table-tbody"
+      class="mb-4"
+    ></v-skeleton-loader>
 
     <!-- Таблица логов -->
     <div v-if="!loading" class="rounded-lg overflow-hidden border" style="overflow-x: auto">
@@ -90,8 +94,11 @@
             <td class="text-body-2">{{ log.description || '-' }}</td>
           </tr>
           <tr v-if="filteredLogs.length === 0">
-            <td colspan="6" class="text-center py-4 text-medium-emphasis">
-              Логи не найдены
+            <td colspan="6" class="pa-0">
+              <div class="text-center pa-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-clipboard-list-outline</v-icon>
+                <p class="text-medium-emphasis mt-3">Логи не найдены</p>
+              </div>
             </td>
           </tr>
         </tbody>
