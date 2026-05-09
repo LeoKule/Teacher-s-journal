@@ -528,6 +528,23 @@ def restore_student(
     )
 
 
+@router.get("/students/{student_id}/delete-impact")
+def hard_delete_impact(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Teacher = Depends(get_current_admin),
+):
+    """Подсчитать что именно будет удалено вместе со студентом (для confirm-диалога)."""
+    student = db.query(models.Student).filter_by(id=student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Студент не найден")
+    grades_count = db.query(models.GradeRecord).filter_by(student_id=student_id).count()
+    return {
+        "student_name": student.full_name,
+        "grades_count": grades_count,
+    }
+
+
 @router.delete("/students/{student_id}")
 def hard_delete_student(
     student_id: int,
@@ -540,7 +557,7 @@ def hard_delete_student(
     if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
     name = f"{student.full_name}"
-    db.query(models.GradeRecord).filter_by(student_id=student_id).delete()
+    grades_deleted = db.query(models.GradeRecord).filter_by(student_id=student_id).delete()
     db.delete(student)
     db.commit()
     crud.create_audit_log(
@@ -549,10 +566,10 @@ def hard_delete_student(
         action="delete",
         entity_type="student",
         entity_id=student_id,
-        description=f"Жёсткое удаление студента {name}",
+        description=f"Жёсткое удаление студента {name} (оценок удалено: {grades_deleted})",
         ip_address=get_client_ip(req),
     )
-    return {"ok": True}
+    return {"ok": True, "grades_deleted": grades_deleted}
 
 
 @router.post("/students/", response_model=schemas.Student)
