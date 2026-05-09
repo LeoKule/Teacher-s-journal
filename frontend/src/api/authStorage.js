@@ -3,11 +3,20 @@
 
 const META_KEYS = ['user_role', 'user_id', 'full_name', 'email']
 
+// При logout очищаем всё что специфично для пользователя (включая UI-state).
+// Тема не трогается — она привязана к устройству, а не к пользователю.
+const USER_SCOPED_KEYS = [
+  ...META_KEYS,
+  'notif_last_seen',
+  'read_notif_ids',
+  'admin_active_tab',
+]
+
 export const getUserRole = () =>
   localStorage.getItem('user_role') || sessionStorage.getItem('user_role')
 
 export const clearAuthData = () => {
-  META_KEYS.forEach((key) => {
+  USER_SCOPED_KEYS.forEach((key) => {
     localStorage.removeItem(key)
     sessionStorage.removeItem(key)
   })

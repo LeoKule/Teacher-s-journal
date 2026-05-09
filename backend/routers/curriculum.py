@@ -73,12 +73,13 @@ def delete_group(
     db: Session = Depends(get_db),
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
-    """Удалить группу (только администратор, только если нет активных студентов)"""
+    """Удалить группу (только администратор, только если она полностью пустая)"""
     if current_teacher.role != "admin":
         raise HTTPException(status_code=403, detail="Требуется роль администратора")
-    success = crud.delete_group(db, group_id)
-    if not success:
-        raise HTTPException(status_code=400, detail="Группа не найдена или содержит активных студентов")
+    ok, msg = crud.delete_group(db, group_id)
+    if not ok:
+        status_code = 404 if msg == "Группа не найдена" else 400
+        raise HTTPException(status_code=status_code, detail=msg)
     return {"ok": True}
 
 

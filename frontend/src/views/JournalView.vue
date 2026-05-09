@@ -445,7 +445,9 @@ const loadNotifications = async () => {
   try {
     const res = await api.get('/notifications/my')
     notifications.value = res.data
-  } catch {}
+  } catch (err) {
+    console.error('Не удалось загрузить уведомления:', err)
+  }
 }
 
 const markOneRead = (n) => {
@@ -533,7 +535,9 @@ const loadPeriods = async () => {
   try {
     const res = await api.get('/academic-periods/')
     periods.value = res.data
-  } catch {}
+  } catch (err) {
+    console.error('Не удалось загрузить семестры:', err)
+  }
 }
 
 const onGroupChange = async () => {

@@ -16,6 +16,7 @@ class Teacher(Base):
     role = Column(String(50), default="teacher", nullable=False)  # "teacher" или "admin"
     is_active = Column(Boolean, default=True, nullable=False)  # Для блокировки сотрудников
     last_login = Column(DateTime, nullable=True)  # Последний вход
+    tokens_invalid_after = Column(DateTime, nullable=True)  # Все токены, выданные ДО этого времени, считаются отозванными
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     

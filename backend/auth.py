@@ -33,7 +33,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Генерирует JWT токен"""
+    """Генерирует JWT токен (включая iat для возможности отзыва токенов целым пользователям)"""
     to_encode = data.copy()
 
     if expires_delta:
@@ -42,7 +42,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         # Если время не передано, берем стандартные 15 минут
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire})
+    iat = datetime.now(timezone.utc)
+    to_encode.update({"exp": expire, "iat": iat})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 

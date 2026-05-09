@@ -217,8 +217,12 @@ const performImport = async () => {
       rows,
       dry_run: dryRun.value
     })
-    
+
     importResult.value = response.data
+    // После реального успешного импорта очищаем preview, чтобы не было повторного импорта тех же строк
+    if (!dryRun.value && response.data.success) {
+      previewData.value = []
+    }
   } catch (error) {
     importResult.value = {
       success: false,

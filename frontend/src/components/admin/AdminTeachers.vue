@@ -127,11 +127,66 @@
       </v-col>
     </v-row>
 
-    <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
+    <v-skeleton-loader
+      v-if="loading"
+      type="table-thead, table-tbody"
+      class="mb-4"
+    ></v-skeleton-loader>
 
-    <div style="overflow-x: auto">
+    <v-card
+      v-if="!loading && filteredTeachers.length === 0"
+      variant="outlined"
+      class="text-center pa-8"
+    >
+      <v-icon size="56" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+      <p class="text-medium-emphasis mt-3">
+        {{ searchQuery ? 'Никто не найден по запросу' : 'Преподавателей пока нет' }}
+      </p>
+    </v-card>
+
+    <!-- Mobile: карточки -->
+    <div v-else-if="!loading && $vuetify.display.smAndDown" class="d-flex flex-column" style="gap: 8px">
+      <v-card
+        v-for="t in filteredTeachers"
+        :key="t.id"
+        variant="outlined"
+        class="pa-3"
+      >
+        <div class="d-flex justify-space-between align-start mb-2" style="gap: 8px">
+          <div style="min-width: 0; flex: 1">
+            <div class="font-weight-bold text-truncate">{{ t.full_name }}</div>
+            <div class="text-body-2 text-medium-emphasis text-truncate">{{ t.email }}</div>
+          </div>
+          <v-menu>
+            <template #activator="{ props }">
+              <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
+            </template>
+            <v-list density="compact">
+              <v-list-item @click="editTeacher(t)" prepend-icon="mdi-pencil" title="Редактировать"></v-list-item>
+              <v-list-item @click="showResetPasswordDialog = true; selectedTeacherId = t.id" prepend-icon="mdi-lock-reset" title="Сброс пароля"></v-list-item>
+              <v-divider></v-divider>
+              <v-list-item
+                @click="toggleBlockTeacher(t)"
+                :prepend-icon="t.is_active ? 'mdi-block-helper' : 'mdi-check-circle'"
+                :title="t.is_active ? 'Заблокировать' : 'Разблокировать'"
+              ></v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+        <div class="d-flex flex-wrap" style="gap: 6px">
+          <v-chip size="x-small" variant="tonal" :color="t.role === 'admin' ? 'indigo' : 'blue'">
+            {{ t.role === 'admin' ? 'Администратор' : 'Преподаватель' }}
+          </v-chip>
+          <v-chip size="x-small" variant="tonal" :color="t.is_active ? 'success' : 'error'">
+            {{ t.is_active ? 'Активен' : 'Заблокирован' }}
+          </v-chip>
+        </div>
+      </v-card>
+    </div>
+
+    <!-- Desktop: таблица -->
+    <div v-else-if="!loading" style="overflow-x: auto">
     <v-data-table
-      v-if="!loading"
       :headers="headers"
       :items="filteredTeachers"
       class="rounded-lg"

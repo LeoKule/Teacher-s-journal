@@ -20,11 +20,21 @@
     </v-row>
 
     <!-- Таблица удаленных студентов -->
-    <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
+    <v-skeleton-loader
+      v-if="loading"
+      type="table-thead, table-tbody"
+      class="mb-4"
+    ></v-skeleton-loader>
 
-    <v-alert v-if="!loading && deletedStudents.length === 0" type="info" variant="tonal">
-      ✓ Нет удаленных студентов
-    </v-alert>
+    <v-card
+      v-if="!loading && deletedStudents.length === 0"
+      class="text-center pa-8 mb-4"
+      variant="outlined"
+    >
+      <v-icon size="56" color="success">mdi-check-circle-outline</v-icon>
+      <p class="text-medium-emphasis mt-3">Нет удалённых студентов</p>
+      <p class="text-caption text-medium-emphasis">Все студенты активны</p>
+    </v-card>
 
     <div style="overflow-x: auto">
     <v-data-table
@@ -41,7 +51,7 @@
             variant="tonal"
             icon
             title="Восстановить"
-            @click="restoreStudent(item.id)"
+            @click="openRestoreDialog(item)"
             :loading="restoring === item.id"
           >
             <v-icon>mdi-restore</v-icon>
@@ -84,7 +94,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="success"
-            @click="confirmRestore"
+            @click="confirmRestore(selectedStudent)"
             :loading="restoring > 0"
           >
             Восстановить
@@ -93,21 +103,50 @@
       </v-card>
     </v-dialog>
 
-    <!-- Диалог жёсткого удаления -->
-    <v-dialog v-model="showHardDeleteDialog" width="450">
+    <!-- Диалог жёсткого удаления (двойное подтверждение) -->
+    <v-dialog v-model="showHardDeleteDialog" width="500" persistent>
       <v-card class="rounded-lg" elevation="4">
-        <v-card-title class="pa-4 text-h6 font-weight-bold">Удалить навсегда?</v-card-title>
+        <v-card-title class="pa-4 text-h6 font-weight-bold text-error">
+          <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+          Удалить навсегда?
+        </v-card-title>
         <v-divider></v-divider>
         <v-card-text class="pa-6">
-          <v-alert type="error" variant="tonal" class="mb-4">
-            Это действие необратимо! Студент и все его оценки будут удалены из базы данных.
+          <v-alert type="error" variant="tonal" class="mb-4" density="compact">
+            Это действие <strong>необратимо</strong>. Студент и все его оценки будут удалены из базы данных.
           </v-alert>
-          <p><strong>{{ hardDeleteTarget?.full_name }}</strong></p>
-          <p class="text-body-2 text-medium-emphasis mt-1">Группа: {{ hardDeleteTarget?.group_name }}</p>
+          <p class="mb-1"><strong>{{ hardDeleteTarget?.full_name }}</strong></p>
+          <p class="text-body-2 text-medium-emphasis mb-3">Группа: {{ hardDeleteTarget?.group_name }}</p>
+
+          <v-alert
+            v-if="hardDeleteImpact"
+            :type="hardDeleteImpact.grades_count > 0 ? 'warning' : 'info'"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            Будет удалено оценок: <strong>{{ hardDeleteImpact.grades_count }}</strong>
+          </v-alert>
+
+          <p class="text-body-2 mb-2">
+            Чтобы подтвердить, введите <code>удалить</code>:
+          </p>
+          <v-text-field
+            v-model="hardDeleteConfirmText"
+            placeholder="удалить"
+            density="compact"
+            hide-details
+            autofocus
+          ></v-text-field>
         </v-card-text>
         <v-card-actions class="pa-4 justify-end gap-2">
-          <v-btn variant="outlined" @click="showHardDeleteDialog = false">Отмена</v-btn>
-          <v-btn color="error" :loading="hardDeleteLoading" @click="hardDeleteStudent">
+          <v-btn variant="outlined" @click="closeHardDeleteDialog">Отмена</v-btn>
+          <v-btn
+            color="error"
+            :loading="hardDeleteLoading"
+            :disabled="hardDeleteConfirmText.trim().toLowerCase() !== 'удалить'"
+            @click="hardDeleteStudent(hardDeleteTarget)"
+          >
             Удалить навсегда
           </v-btn>
         </v-card-actions>
@@ -144,6 +183,8 @@ const restoreResult = ref(null)
 const showHardDeleteDialog = ref(false)
 const hardDeleteTarget = ref(null)
 const hardDeleteLoading = ref(false)
+const hardDeleteImpact = ref(null)
+const hardDeleteConfirmText = ref('')
 
 const headers = [
   { title: 'ФИО', key: 'full_name' },
@@ -178,50 +219,66 @@ const loadDeletedStudents = async () => {
   }
 }
 
-const restoreStudent = (studentId) => {
-  selectedStudent.value = deletedStudents.value.find(s => s.id === studentId)
+const openRestoreDialog = (student) => {
+  selectedStudent.value = student
   showConfirmDialog.value = true
 }
 
-const openHardDeleteDialog = (student) => {
-  hardDeleteTarget.value = student
-  showHardDeleteDialog.value = true
+const closeHardDeleteDialog = () => {
+  showHardDeleteDialog.value = false
+  hardDeleteImpact.value = null
+  hardDeleteConfirmText.value = ''
+  hardDeleteTarget.value = null
 }
 
-const hardDeleteStudent = async () => {
+const openHardDeleteDialog = async (student) => {
+  hardDeleteTarget.value = student
+  hardDeleteImpact.value = null
+  hardDeleteConfirmText.value = ''
+  showHardDeleteDialog.value = true
+  try {
+    const res = await api.get(`/admin/students/${student.id}/delete-impact`)
+    hardDeleteImpact.value = res.data
+  } catch (err) {
+    console.error('Не удалось получить данные о влиянии удаления:', err)
+  }
+}
+
+// Принимает студента аргументом — защита от race
+const hardDeleteStudent = async (student) => {
+  if (!student) return
   hardDeleteLoading.value = true
   try {
-    await api.delete(`/admin/students/${hardDeleteTarget.value.id}`)
-    deletedStudents.value = deletedStudents.value.filter(s => s.id !== hardDeleteTarget.value.id)
-    showHardDeleteDialog.value = false
+    const res = await api.delete(`/admin/students/${student.id}`)
+    deletedStudents.value = deletedStudents.value.filter(s => s.id !== student.id)
+    closeHardDeleteDialog()
     restoreResult.value = {
       success: true,
-      message: `Студент ${hardDeleteTarget.value.full_name} удалён навсегда`
+      message: `Студент ${student.full_name} удалён навсегда (оценок удалено: ${res.data.grades_deleted ?? 0})`
     }
   } catch (err) {
     restoreResult.value = {
       success: false,
       message: 'Ошибка при удалении: ' + (err.response?.data?.detail || err.message)
     }
-    showHardDeleteDialog.value = false
+    closeHardDeleteDialog()
   } finally {
     hardDeleteLoading.value = false
   }
 }
 
-const confirmRestore = async () => {
-  restoring.value = selectedStudent.value.id
-  
+// Принимаем студента аргументом, чтобы избежать race condition если selectedStudent
+// сменится между открытием диалога и нажатием "Восстановить"
+const confirmRestore = async (student) => {
+  if (!student) return
+  restoring.value = student.id
+
   try {
-    const response = await api.post(
-      `/admin/students/${selectedStudent.value.id}/restore`
-    )
-    
+    const response = await api.post(`/admin/students/${student.id}/restore`)
     restoreResult.value = {
       success: true,
       message: response.data.message
     }
-    
     showConfirmDialog.value = false
     await loadDeletedStudents()
   } catch (error) {

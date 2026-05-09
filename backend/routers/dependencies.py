@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -66,6 +67,7 @@ def get_current_teacher(request: Request, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
+        token_iat = payload.get("iat")
         if email is None:
             raise credentials_exception
     except jwt.ExpiredSignatureError:
@@ -79,6 +81,19 @@ def get_current_teacher(request: Request, db: Session = Depends(get_db)):
 
     if not teacher.is_active:
         raise HTTPException(status_code=403, detail="Ваш аккаунт заблокирован")
+
+    # Глобальный отзыв токенов: если у юзера выставлен tokens_invalid_after
+    # и токен выдан раньше — отказ. Используется при блокировке.
+    if teacher.tokens_invalid_after and token_iat is not None:
+        token_iat_dt = datetime.fromtimestamp(token_iat, tz=timezone.utc)
+        invalid_after = teacher.tokens_invalid_after
+        if invalid_after.tzinfo is None:
+            invalid_after = invalid_after.replace(tzinfo=timezone.utc)
+        if token_iat_dt < invalid_after:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Токен отозван — пожалуйста, войдите снова",
+            )
 
     return teacher
 
@@ -103,6 +118,8 @@ def validate_grade_record_access(
     lesson = crud.get_lesson_by_id(db, lesson_id=lesson_id)
     if lesson is None:
         raise HTTPException(status_code=404, detail="Занятие не найдено")
+    if lesson.is_deleted:
+        raise HTTPException(status_code=404, detail="Занятие удалено")
 
     subject = crud.get_subject_by_id(db, subject_id=lesson.subject_id)
     if subject is None or subject.teacher_id != current_teacher.id:
@@ -111,6 +128,8 @@ def validate_grade_record_access(
     student = crud.get_student_by_id(db, student_id=student_id)
     if student is None:
         raise HTTPException(status_code=404, detail="Студент не найден")
+    if student.is_deleted:
+        raise HTTPException(status_code=404, detail="Студент удалён")
     if student.group_id != lesson.group_id:
         raise HTTPException(status_code=400, detail="Студент не состоит в группе этого занятия")
 
@@ -127,6 +146,8 @@ def validate_bulk_grade_record_access(
     lesson = crud.get_lesson_by_id(db, lesson_id=lesson_id)
     if lesson is None:
         raise HTTPException(status_code=404, detail="Занятие не найдено")
+    if lesson.is_deleted:
+        raise HTTPException(status_code=404, detail="Занятие удалено")
 
     subject = crud.get_subject_by_id(db, subject_id=lesson.subject_id)
     if subject is None or subject.teacher_id != current_teacher.id:

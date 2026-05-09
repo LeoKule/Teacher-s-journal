@@ -1,6 +1,7 @@
 from datetime import date, timedelta, datetime, timezone
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 import models, schemas, auth
 
@@ -32,16 +33,27 @@ def get_groups_with_count(db: Session) -> list:
     ]
 
 
-def delete_group(db: Session, group_id: int) -> bool:
+def delete_group(db: Session, group_id: int) -> tuple[bool, str | None]:
+    """Возвращает (success, error_message). Удаляет только полностью пустые группы."""
     group = db.query(models.StudentGroup).filter_by(id=group_id).first()
     if not group:
-        return False
-    active = db.query(models.Student).filter_by(group_id=group_id, is_deleted=False).count()
-    if active > 0:
-        return False
+        return False, "Группа не найдена"
+
+    active_students = db.query(models.Student).filter_by(group_id=group_id, is_deleted=False).count()
+    if active_students > 0:
+        return False, f"В группе ещё {active_students} активных студентов — удалите или переведите их сначала"
+
+    assignments = db.query(models.TeachingAssignment).filter_by(group_id=group_id).count()
+    if assignments > 0:
+        return False, f"На группе {assignments} назначений преподавателей — удалите их сначала"
+
+    active_lessons = db.query(models.Lesson).filter_by(group_id=group_id, is_deleted=False).count()
+    if active_lessons > 0:
+        return False, f"В группе {active_lessons} активных уроков — удалите их сначала"
+
     db.delete(group)
     db.commit()
-    return True
+    return True, None
 
 
 def get_groups_for_teacher(db: Session, teacher_id: int):
@@ -829,6 +841,8 @@ def delete_grade_record(db: Session, db_grade_record: models.GradeRecord):
 
 
 def upsert_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
+    """Upsert с защитой от race condition. Если параллельный запрос успеет создать
+    запись пока мы делаем INSERT — UNIQUE constraint защитит, и мы повторно загрузим запись."""
     existing_record = (
         db.query(models.GradeRecord)
         .filter(
@@ -839,7 +853,21 @@ def upsert_grade_record(db: Session, grade_record: schemas.GradeRecordCreate):
     )
 
     if existing_record is None:
-        return create_grade_record(db=db, grade_record=grade_record)
+        try:
+            return create_grade_record(db=db, grade_record=grade_record)
+        except IntegrityError:
+            # Конкурентная вставка успела первой — откатываем и обновляем
+            db.rollback()
+            existing_record = (
+                db.query(models.GradeRecord)
+                .filter(
+                    models.GradeRecord.lesson_id == grade_record.lesson_id,
+                    models.GradeRecord.student_id == grade_record.student_id,
+                )
+                .first()
+            )
+            if existing_record is None:
+                raise
 
     existing_record.is_deleted = False
     existing_record.grade_value = grade_record.grade_value
@@ -883,6 +911,7 @@ def bulk_upsert_grade_records(
             record.grade_value = row.grade_value
             record.attendance_status = row.attendance_status
             record.comment = row.comment
+            record.is_deleted = False  # восстанавливаем soft-deleted запись при апсерте
         saved_records.append(record)
 
     db.commit()
@@ -1160,12 +1189,17 @@ def reset_teacher_password(db: Session, teacher_id: int, new_password: str):
 
 
 def block_teacher(db: Session, teacher_id: int, is_active: bool):
-    """Блокирует или разблокирует преподавателя"""
+    """Блокирует или разблокирует преподавателя.
+    При блокировке проставляет tokens_invalid_after — все ранее выданные токены
+    немедленно становятся невалидны (немедленный logout)."""
     teacher = get_teacher_by_id(db, teacher_id)
     if not teacher:
         return None
-    
+
     teacher.is_active = is_active
+    if not is_active:
+        from datetime import datetime, timezone
+        teacher.tokens_invalid_after = datetime.now(timezone.utc)
     db.commit()
     db.refresh(teacher)
     return teacher
