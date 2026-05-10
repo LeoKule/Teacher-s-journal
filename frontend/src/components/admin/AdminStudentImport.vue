@@ -140,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../../api/axios'
 
 const fileInput = ref(null)
@@ -150,6 +150,14 @@ const importing = ref(false)
 const previewData = ref([])
 const importResult = ref(null)
 const fileError = ref('')
+const knownGroups = ref([])
+
+onMounted(async () => {
+  try {
+    const res = await api.get('/curriculum/groups/')
+    knownGroups.value = res.data.map(g => g.group_name.trim().toLowerCase())
+  } catch {}
+})
 
 const previewHeaders = [
   { title: 'Фамилия', key: 'last_name' },
@@ -194,7 +202,11 @@ const parseCSV = (file) => {
         first_name: parts[1] || '',
         group_name: parts[2] || '',
         student_id: parts[3] || '',
-        status: parts[0] && parts[1] && parts[2] ? 'ok' : 'error'
+        status: (() => {
+          if (!parts[0] || !parts[1] || !parts[2]) return 'error'
+          if (knownGroups.value.length && !knownGroups.value.includes(parts[2].trim().toLowerCase())) return 'error'
+          return 'ok'
+        })()
       }
     })
   }
@@ -226,7 +238,7 @@ const performImport = async () => {
   } catch (error) {
     importResult.value = {
       success: false,
-      message: ' Ошибка при импорте: ' + (error.response?.data?.detail || error.message),
+      message: 'Ошибка при импорте: ' + (typeof error.response?.data?.detail === 'string' ? error.response.data.detail : error.message),
       error_count: 1,
       errors: []
     }
