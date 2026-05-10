@@ -114,7 +114,7 @@
 
     <!-- Кнопки действия -->
     <v-row v-if="previewData.length > 0" class="mb-6">
-      <v-col cols="12" class="d-flex gap-2">
+      <v-col cols="12" class="d-flex" style="gap: 12px">
         <v-btn
           color="primary"
           size="large"
@@ -156,6 +156,16 @@ const getRowStatus = (lastName, firstName, groupName) => {
   if (!lastName || !firstName || !groupName) return 'error'
   if (knownGroups.value.length && !knownGroups.value.includes(groupName.trim().toLowerCase())) return 'error'
   return 'ok'
+}
+
+const getRowError = (item) => {
+  if (!item.last_name) return 'отсутствует фамилия'
+  if (!item.first_name) return 'отсутствует имя'
+  if (!item.group_name) return 'отсутствует группа'
+  if (knownGroups.value.length && !knownGroups.value.includes(item.group_name.trim().toLowerCase())) {
+    return `группа "${item.group_name}" не существует`
+  }
+  return ''
 }
 
 onMounted(async () => {
@@ -223,23 +233,52 @@ const performImport = async () => {
   importResult.value = null
   
   try {
-    const rows = previewData.value
-      .filter(item => getRowStatus(item.last_name, item.first_name, item.group_name) === 'ok')
-      .map(item => ({
-        last_name: item.last_name,
-        first_name: item.first_name,
-        group_name: item.group_name,
-        student_id: item.student_id || undefined
-      }))
-    
+    const localErrors = []
+    const validItems = []
+    previewData.value.forEach(item => {
+      if (getRowStatus(item.last_name, item.first_name, item.group_name) === 'ok') {
+        validItems.push(item)
+      } else {
+        localErrors.push({ row_number: item.row, error: getRowError(item) })
+      }
+    })
+
+    const rows = validItems.map(item => ({
+      last_name: item.last_name,
+      first_name: item.first_name,
+      group_name: item.group_name,
+      student_id: item.student_id || undefined
+    }))
+
     const response = await api.post('/admin/students/bulk-import', {
       rows,
       dry_run: dryRun.value
     })
 
-    importResult.value = response.data
+    const backendData = response.data
+    const totalErrors = (backendData.error_count || 0) + localErrors.length
+    const mergedErrors = [...localErrors, ...(backendData.errors || [])]
+    const successOk = backendData.success && localErrors.length === 0
+
+    let message
+    if (dryRun.value) {
+      message = `[DRY RUN] Готово к импорту: ${rows.length} студентов, ${totalErrors} ошибок`
+    } else if (totalErrors === 0) {
+      message = backendData.message
+    } else {
+      const imported = backendData.imported_count ?? rows.length
+      message = `Импортировано: ${imported}, ошибок: ${totalErrors}`
+    }
+
+    importResult.value = {
+      success: successOk,
+      message,
+      error_count: totalErrors,
+      errors: mergedErrors,
+    }
+
     // После реального успешного импорта очищаем preview, чтобы не было повторного импорта тех же строк
-    if (!dryRun.value && response.data.success) {
+    if (!dryRun.value && successOk) {
       previewData.value = []
     }
   } catch (error) {
