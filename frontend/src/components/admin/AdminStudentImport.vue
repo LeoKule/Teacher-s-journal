@@ -64,7 +64,7 @@
         >
           <template #item.status="{ item }">
             <v-chip
-              v-if="item.status === 'ok'"
+              v-if="getRowStatus(item.last_name, item.first_name, item.group_name) === 'ok'"
               color="green"
               variant="tonal"
               size="small"
@@ -140,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../../api/axios'
 
 const fileInput = ref(null)
@@ -165,13 +165,6 @@ onMounted(async () => {
   } catch {}
 })
 
-watch(knownGroups, (groups) => {
-  if (!groups.length || !previewData.value.length) return
-  previewData.value = previewData.value.map(item => ({
-    ...item,
-    status: getRowStatus(item.last_name, item.first_name, item.group_name)
-  }))
-})
 
 const previewHeaders = [
   { title: 'Фамилия', key: 'last_name' },
@@ -216,7 +209,7 @@ const parseCSV = (file) => {
         first_name: parts[1] || '',
         group_name: parts[2] || '',
         student_id: parts[3] || '',
-        status: getRowStatus(parts[0], parts[1], parts[2])
+        status: 'pending'
       }
     })
   }
