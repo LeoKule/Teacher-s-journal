@@ -1,6 +1,6 @@
 <template>
   <v-container class="pa-4">
-    <h2 class="admin-section-title font-weight-bold mb-4">Аналитика по группе</h2>
+    <h2 class="admin-section-title font-weight-bold mb-6">Аналитика по группе</h2>
 
     <v-row class="mb-4">
       <v-col cols="12" md="4">
