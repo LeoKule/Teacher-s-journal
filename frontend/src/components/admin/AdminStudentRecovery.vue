@@ -44,7 +44,7 @@
       class="rounded-lg"
     >
       <template #item.actions="{ item }">
-        <div class="d-flex gap-4">
+        <div class="d-flex" style="gap: 12px">
           <v-btn
             color="success"
             size="small"
