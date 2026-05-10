@@ -199,7 +199,7 @@ onMounted(async () => {
 
 const loadGroups = async () => {
   try {
-    const response = await api.get('/curriculum/groups/')
+    const response = await api.get('/groups/')
     groups.value = response.data
   } catch (error) {
     console.error('Ошибка загрузки групп:', error)

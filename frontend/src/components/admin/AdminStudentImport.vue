@@ -164,7 +164,7 @@ const getRowStatus = (lastName, firstName, groupName) => {
 
 onMounted(async () => {
   try {
-    const res = await api.get('/curriculum/groups/')
+    const res = await api.get('/groups/')
     if (Array.isArray(res.data)) {
       knownGroups.value = res.data.map(g => g.group_name.trim().toLowerCase())
       groupsDebug.value = `Загружено групп: ${knownGroups.value.length} (${knownGroups.value.slice(0,3).join(', ')}...)`
