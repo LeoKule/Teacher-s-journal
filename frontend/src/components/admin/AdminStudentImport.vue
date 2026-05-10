@@ -3,9 +3,6 @@
     <!-- Заголовок -->
     <h6 class="admin-section-title text-h6 font-weight-bold mb-6"> Импорт студентов из CSV</h6>
 
-    <!-- DEBUG: убрать после диагностики -->
-    <v-alert v-if="groupsDebug" type="warning" variant="tonal" density="compact" class="mb-3" style="font-size:12px">{{ groupsDebug }}</v-alert>
-
     <!-- Инструкция -->
     <v-alert type="info" variant="tonal" class="mb-6">
       <strong>Формат CSV:</strong> last_name, first_name, group_name, student_id (опционально)
@@ -154,7 +151,6 @@ const previewData = ref([])
 const importResult = ref(null)
 const fileError = ref('')
 const knownGroups = ref([])
-const groupsDebug = ref('')
 
 const getRowStatus = (lastName, firstName, groupName) => {
   if (!lastName || !firstName || !groupName) return 'error'
@@ -167,13 +163,8 @@ onMounted(async () => {
     const res = await api.get('/groups/')
     if (Array.isArray(res.data)) {
       knownGroups.value = res.data.map(g => g.group_name.trim().toLowerCase())
-      groupsDebug.value = `Загружено групп: ${knownGroups.value.length} (${knownGroups.value.slice(0,3).join(', ')}...)`
-    } else {
-      groupsDebug.value = `Неожиданный формат: ${JSON.stringify(res.data).slice(0, 100)}`
     }
-  } catch (e) {
-    groupsDebug.value = `Ошибка загрузки групп: ${e.message}`
-  }
+  } catch {}
 })
 
 
@@ -232,12 +223,14 @@ const performImport = async () => {
   importResult.value = null
   
   try {
-    const rows = previewData.value.map(item => ({
-      last_name: item.last_name,
-      first_name: item.first_name,
-      group_name: item.group_name,
-      student_id: item.student_id || undefined
-    }))
+    const rows = previewData.value
+      .filter(item => getRowStatus(item.last_name, item.first_name, item.group_name) === 'ok')
+      .map(item => ({
+        last_name: item.last_name,
+        first_name: item.first_name,
+        group_name: item.group_name,
+        student_id: item.student_id || undefined
+      }))
     
     const response = await api.post('/admin/students/bulk-import', {
       rows,
