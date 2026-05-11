@@ -6,6 +6,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from typing import List, Optional
 import models
 import schemas
@@ -759,15 +760,24 @@ def delete_assignment(
 
     desc = f"Удалено назначение: {assignment.teacher.full_name} → {assignment.subject.name} → {assignment.group.group_name}"
 
-    # Явное удаление дочерних записей (ScheduleOccurrence → ScheduleTemplate)
-    # чтобы обойти FK constraint в MySQL
-    for template in list(assignment.schedule_templates):
-        for occ in list(template.schedule_occurrences):
-            db.delete(occ)
-        db.delete(template)
-
     try:
-        db.delete(assignment)
+        # Raw SQL — обходим ORM relationship handling (он пытается SET NULL на NOT NULL колонках)
+        db.execute(
+            text("""
+                DELETE so FROM schedule_occurrences so
+                INNER JOIN schedule_templates st ON so.schedule_template_id = st.id
+                WHERE st.teaching_assignment_id = :aid
+            """),
+            {"aid": assignment_id}
+        )
+        db.execute(
+            text("DELETE FROM schedule_templates WHERE teaching_assignment_id = :aid"),
+            {"aid": assignment_id}
+        )
+        db.execute(
+            text("DELETE FROM teaching_assignments WHERE id = :aid"),
+            {"aid": assignment_id}
+        )
         db.commit()
     except IntegrityError as e:
         db.rollback()
