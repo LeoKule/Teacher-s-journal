@@ -170,7 +170,7 @@ class TeachingAssignment(Base):
     subject = relationship("Subject", back_populates="teaching_assignments")
     group = relationship("StudentGroup", back_populates="teaching_assignments")
     academic_period = relationship("AcademicPeriod", back_populates="teaching_assignments")
-    schedule_templates = relationship("ScheduleTemplate", back_populates="teaching_assignment")
+    schedule_templates = relationship("ScheduleTemplate", back_populates="teaching_assignment", cascade="all, delete-orphan")
 
 
 class ScheduleTemplate(Base):
@@ -196,7 +196,7 @@ class ScheduleTemplate(Base):
     classroom = Column(String(50), nullable=True)
 
     teaching_assignment = relationship("TeachingAssignment", back_populates="schedule_templates")
-    schedule_occurrences = relationship("ScheduleOccurrence", back_populates="schedule_template")
+    schedule_occurrences = relationship("ScheduleOccurrence", back_populates="schedule_template", cascade="all, delete-orphan")
 
 
 class ScheduleOccurrence(Base):
