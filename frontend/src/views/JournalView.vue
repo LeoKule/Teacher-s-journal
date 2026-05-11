@@ -609,11 +609,8 @@ const typeMeta = (t) => NOTIF_TYPE_MAP[t] || NOTIF_TYPE_MAP.other
 const notifications = ref([])
 const notifMenu = ref(false)
 const filterType = ref('all')
-const lastSeen = ref(parseInt(localStorage.getItem('notif_last_seen') || '0'))
-const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
 
-const isUnread = (n) =>
-  !readIds.value.includes(n.id) && new Date(n.created_at).getTime() > lastSeen.value
+const isUnread = (n) => !n.is_read
 
 const unreadCount = computed(() =>
   notifications.value.filter(n => isUnread(n)).length
@@ -666,20 +663,31 @@ const loadNotifications = async () => {
   }
 }
 
-const markOneRead = (n) => {
-  if (!readIds.value.includes(n.id)) {
-    readIds.value = [...readIds.value, n.id]
-    localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+const markOneRead = async (n) => {
+  if (n.is_read) return
+  // Оптимистично отмечаем в UI, потом синхронизируем с сервером
+  n.is_read = true
+  try {
+    await api.post(`/notifications/${n.id}/read`)
+  } catch (err) {
+    // Откат при ошибке
+    n.is_read = false
+    console.error('Не удалось отметить уведомление прочитанным:', err)
   }
 }
 
-const markAllRead = () => {
-  const now = Date.now()
-  localStorage.setItem('notif_last_seen', now.toString())
-  lastSeen.value = now
-  const merged = Array.from(new Set([...readIds.value, ...notifications.value.map(n => n.id)]))
-  readIds.value = merged
-  localStorage.setItem('read_notif_ids', JSON.stringify(merged))
+const markAllRead = async () => {
+  const unread = notifications.value.filter(n => !n.is_read)
+  if (!unread.length) return
+  // Оптимистично
+  unread.forEach(n => { n.is_read = true })
+  try {
+    await api.post('/notifications/mark-all-read')
+  } catch (err) {
+    // Откат
+    unread.forEach(n => { n.is_read = false })
+    console.error('Не удалось отметить все уведомления прочитанными:', err)
+  }
 }
 
 // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====

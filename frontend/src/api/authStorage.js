@@ -7,10 +7,15 @@ const META_KEYS = ['user_role', 'user_id', 'full_name', 'email']
 // Тема не трогается — она привязана к устройству, а не к пользователю.
 const USER_SCOPED_KEYS = [
   ...META_KEYS,
-  'notif_last_seen',
-  'read_notif_ids',
   'admin_active_tab',
 ]
+
+// Старые ключи уведомлений — больше не используются (читанность теперь на сервере).
+// Очищаем явно при загрузке модуля чтобы не висели мусором в localStorage.
+;['notif_last_seen', 'read_notif_ids'].forEach((key) => {
+  localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
+})
 
 export const getUserRole = () =>
   localStorage.getItem('user_role') || sessionStorage.getItem('user_role')

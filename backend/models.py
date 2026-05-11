@@ -265,3 +265,16 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     admin = relationship("Teacher", foreign_keys=[admin_id])
+
+
+class NotificationRead(Base):
+    """Отметка о прочтении уведомления конкретным преподавателем"""
+    __tablename__ = "notification_reads"
+    __table_args__ = (
+        UniqueConstraint("notification_id", "teacher_id", name="uq_notification_read"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    notification_id = Column(Integer, ForeignKey("notifications.id"), nullable=False, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
+    read_at = Column(DateTime, default=datetime.utcnow, nullable=False)

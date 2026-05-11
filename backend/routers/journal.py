@@ -225,13 +225,22 @@ def get_my_notifications(
     db: Session = Depends(get_db),
     current_teacher: models.Teacher = Depends(get_current_teacher)
 ):
-    """Получить уведомления адресованные текущему преподавателю"""
+    """Получить уведомления адресованные текущему преподавателю с флагом is_read"""
     all_notifications = (
         db.query(models.Notification)
         .order_by(models.Notification.created_at.desc())
         .limit(50)
         .all()
     )
+
+    # Один запрос за всеми отметками о прочтении для текущего юзера
+    read_ids = {
+        r.notification_id
+        for r in db.query(models.NotificationRead.notification_id)
+        .filter(models.NotificationRead.teacher_id == current_teacher.id)
+        .all()
+    }
+
     result = []
     for n in all_notifications:
         try:
@@ -243,7 +252,83 @@ def get_my_notifications(
                     "title": n.title,
                     "message": n.message,
                     "created_at": n.created_at.isoformat(),
+                    "is_read": n.id in read_ids,
                 })
         except Exception:
             continue
     return result
+
+
+def _ensure_recipient(notification: models.Notification, teacher_id: int) -> None:
+    """Проверяет что teacher есть в recipient_ids уведомления"""
+    try:
+        ids = json.loads(notification.recipient_ids)
+    except Exception:
+        ids = []
+    if teacher_id not in ids:
+        raise HTTPException(status_code=403, detail="Уведомление не адресовано вам")
+
+
+@router.post("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Отметить уведомление как прочитанное (идемпотентно)"""
+    notification = db.query(models.Notification).filter_by(id=notification_id).first()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Уведомление не найдено")
+    _ensure_recipient(notification, current_teacher.id)
+
+    existing = (
+        db.query(models.NotificationRead)
+        .filter_by(notification_id=notification_id, teacher_id=current_teacher.id)
+        .first()
+    )
+    if existing:
+        return {"ok": True, "already_read": True}
+
+    record = models.NotificationRead(
+        notification_id=notification_id,
+        teacher_id=current_teacher.id,
+    )
+    db.add(record)
+    db.commit()
+    return {"ok": True, "already_read": False}
+
+
+@router.post("/notifications/mark-all-read")
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_teacher: models.Teacher = Depends(get_current_teacher)
+):
+    """Отметить все непрочитанные уведомления текущего преподавателя как прочитанные"""
+    all_notifications = db.query(models.Notification).all()
+
+    already_read_ids = {
+        r.notification_id
+        for r in db.query(models.NotificationRead.notification_id)
+        .filter(models.NotificationRead.teacher_id == current_teacher.id)
+        .all()
+    }
+
+    marked = 0
+    for n in all_notifications:
+        if n.id in already_read_ids:
+            continue
+        try:
+            ids = json.loads(n.recipient_ids)
+        except Exception:
+            continue
+        if current_teacher.id not in ids:
+            continue
+        db.add(models.NotificationRead(
+            notification_id=n.id,
+            teacher_id=current_teacher.id,
+        ))
+        marked += 1
+
+    if marked:
+        db.commit()
+    return {"ok": True, "marked": marked}
