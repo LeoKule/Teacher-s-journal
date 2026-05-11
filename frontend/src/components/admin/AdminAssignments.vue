@@ -350,7 +350,8 @@ const deleteAssignment = async () => {
     showDeleteDialog.value = false
     success.value = 'Назначение удалено'
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Ошибка при удалении'
+    const detail = err.response?.data?.detail
+    error.value = (typeof detail === 'string' ? detail : null) || `Ошибка при удалении (${err.response?.status ?? err.message})`
     showDeleteDialog.value = false
   } finally {
     deleteLoading.value = false

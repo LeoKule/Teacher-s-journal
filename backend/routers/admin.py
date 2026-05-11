@@ -5,6 +5,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 import models
 import schemas
@@ -757,8 +758,21 @@ def delete_assignment(
         raise HTTPException(status_code=404, detail="Назначение не найдено")
 
     desc = f"Удалено назначение: {assignment.teacher.full_name} → {assignment.subject.name} → {assignment.group.group_name}"
-    db.delete(assignment)
-    db.commit()
+
+    # Явное удаление дочерних записей (ScheduleOccurrence → ScheduleTemplate)
+    # чтобы обойти FK constraint в MySQL
+    for template in list(assignment.schedule_templates):
+        for occ in list(template.schedule_occurrences):
+            db.delete(occ)
+        db.delete(template)
+
+    try:
+        db.delete(assignment)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        logger.error("Ошибка удаления назначения %s: %s", assignment_id, e)
+        raise HTTPException(status_code=409, detail="Невозможно удалить назначение: есть связанные данные")
 
     crud.create_audit_log(
         db=db,
