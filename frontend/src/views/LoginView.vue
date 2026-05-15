@@ -31,6 +31,8 @@
             prepend-inner-icon="mdi-email-outline"
             class="mb-2"
             :rules="emailRules"
+            autocomplete="email"
+            @update:model-value="error = ''"
           ></v-text-field>
 
           <v-text-field
@@ -42,6 +44,8 @@
             @click:append-inner="showPassword = !showPassword"
             class="mb-4"
             :rules="passwordRules"
+            autocomplete="current-password"
+            @update:model-value="error = ''"
           ></v-text-field>
 
           <v-checkbox
@@ -63,7 +67,6 @@
             block
             size="large"
             :loading="loading"
-            :disabled="!email || !password"
             class="text-none font-weight-bold"
             style="letter-spacing: 0.3px;"
           >
@@ -128,8 +131,16 @@ onMounted(() => {
 })
 
 const handleLogin = async () => {
-  loading.value = true
   error.value = ''
+
+  // Клиентская валидация — не дёргаем бэк, если форма заполнена некорректно.
+  const { valid } = await loginForm.value.validate()
+  if (!valid) {
+    error.value = 'Проверьте правильность заполнения полей.'
+    return
+  }
+
+  loading.value = true
 
   const formData = new URLSearchParams()
   formData.append('username', email.value)
@@ -147,14 +158,34 @@ const handleLogin = async () => {
       router.push('/journal')
     }
   } catch (err) {
-    if (err.response && err.response.status === 401) {
-      error.value = 'Неверный email или пароль.'
-    } else {
-      error.value = 'Ошибка соединения с сервером.'
-    }
+    error.value = resolveLoginError(err)
   } finally {
     loading.value = false
   }
+}
+
+// Маппинг сетевых/HTTP ошибок в человекочитаемый текст.
+// Приоритет — конкретное сообщение от бэка (detail), если оно есть и осмысленно.
+const resolveLoginError = (err) => {
+  if (err.code === 'ECONNABORTED') {
+    return 'Сервер не отвечает. Попробуйте позже.'
+  }
+  if (!err.response) {
+    // Нет ответа от сервера — сеть/CORS/сервер лёг до того как ответил
+    return 'Не удалось подключиться к серверу. Проверьте интернет-соединение.'
+  }
+
+  const status = err.response.status
+  const detail = err.response.data?.detail
+
+  if (status === 400) return 'Неверный email или пароль.'
+  if (status === 401) return 'Неверный email или пароль.'
+  if (status === 403) return typeof detail === 'string' ? detail : 'Учётная запись заблокирована. Обратитесь к администратору.'
+  if (status === 422) return 'Проверьте правильность заполнения полей.'
+  if (status === 429) return typeof detail === 'string' ? detail : 'Слишком много попыток входа. Подождите минуту и попробуйте снова.'
+  if (status >= 500) return 'Сервер временно недоступен. Попробуйте через минуту.'
+
+  return typeof detail === 'string' ? detail : 'Не удалось выполнить вход. Попробуйте ещё раз.'
 }
 </script>
 

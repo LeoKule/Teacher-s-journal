@@ -106,8 +106,28 @@ async def login_for_access_token(
             detail="Слишком много попыток входа. Попробуйте позже."
         )
 
-    user = auth.authenticate_user(db, form_data.username, form_data.password)
-    if not user:
+    result = auth.authenticate_user(db, form_data.username, form_data.password)
+
+    if result == auth.AUTH_INACTIVE:
+        logger.warning(f"Login attempt for inactive account: {form_data.username} from {client_ip}")
+        try:
+            crud.create_audit_log(
+                db=db,
+                admin_id=None,
+                action="inactive_login",
+                entity_type="auth",
+                description=f"Вход в заблокированный аккаунт: {form_data.username}",
+                ip_address=client_ip,
+            )
+        except Exception as log_err:
+            logger.error(f"Failed to write inactive_login audit: {log_err}")
+            db.rollback()
+        raise HTTPException(
+            status_code=403,
+            detail="Учётная запись заблокирована. Обратитесь к администратору."
+        )
+
+    if result == auth.AUTH_INVALID:
         logger.warning(f"Failed login attempt for email: {form_data.username} from {client_ip}")
         try:
             crud.create_audit_log(
@@ -121,7 +141,9 @@ async def login_for_access_token(
         except Exception as log_err:
             logger.error(f"Failed to write failed_login audit: {log_err}")
             db.rollback()
-        raise HTTPException(status_code=400, detail="Неверный логин или пароль")
+        raise HTTPException(status_code=400, detail="Неверный email или пароль")
+
+    user = result
 
     access_token = auth.create_access_token(
         data={"sub": user.email},

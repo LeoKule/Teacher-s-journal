@@ -47,24 +47,24 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+# Результаты authenticate_user — различаем причины отказа, чтобы роутер выбрал HTTP-код.
+AUTH_INVALID = "invalid"      # юзер не найден или неверный пароль (объединено намеренно: enumeration защита)
+AUTH_INACTIVE = "inactive"    # юзер существует, пароль верен, но аккаунт заблокирован
+
+
 def authenticate_user(db: Session, email: str, password: str):
-    # Ищем пользователя по email
     user = db.query(models.Teacher).filter(models.Teacher.email == email).first()
     if not user:
-        return False
-    
-    # Проверяем, активен ли аккаунт
-    if not user.is_active:
-        return False
-    
-    # Проверяем пароль (используем уже существующую у тебя функцию verify_password)
+        return AUTH_INVALID
+
     if not verify_password(password, user.password_hash):
-        return False
-    
-    # Обновляем время последнего входа
+        return AUTH_INVALID
+
+    if not user.is_active:
+        return AUTH_INACTIVE
+
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    
     return user
 
 def get_user_by_email(db: Session, email: str):
